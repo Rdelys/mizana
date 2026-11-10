@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Mizana",
+    "slug": "mizana",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/logo.png",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E4FD8"
+    },
+    "plugins": ["expo-notifications"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.devart.mizana"
+    },
+    "android": {
+      "package": "com.devart.mizana",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#1E4FD8"
+      },
+      "permissions": ["POST_NOTIFICATIONS", "VIBRATE"]
+    }
+  }
+}
