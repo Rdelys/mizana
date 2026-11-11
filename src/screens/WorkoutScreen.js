@@ -31,7 +31,7 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
   const [voice, setVoice] = useState(true);
-  const [guideId, setGuideId] = useState(null);
+  const [guide, setGuide] = useState(null); // { id, reps, sets }
   const remRef = useRef(steps[0].seconds);
 
   const confirmQuit = () => {
@@ -55,8 +55,9 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
   useEffect(() => {
     if (!voice || finished) return;
     const s = steps[idx];
-    const text =
-      s.kind === 'rest' ? `Repos.${s.next ? ` Ensuite : ${s.next}` : ''}` : s.kind === 'work' ? s.name : s.name;
+    let text = s.name;
+    if (s.kind === 'rest') text = `Repos.${s.next ? ` Ensuite : ${s.next}` : ''}`;
+    else if (s.kind === 'work' && s.reps) text = `${s.name}. ${s.reps} répétitions.`;
     try {
       Speech.stop();
       Speech.speak(text, { language: 'fr-FR' });
@@ -137,12 +138,14 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
   const elapsedBefore = steps.slice(0, idx).reduce((s, st) => s + st.seconds, 0);
   const overall = (elapsedBefore + (step.seconds - remaining)) / totalSeconds;
   const guideTarget = step.exId || step.previewId || null;
+  const guideReps = step.reps || step.previewReps || null;
+  const guideSets = step.exId || step.previewId ? step.rounds || null : null;
 
   let counter = '';
   if (step.kind === 'work' && step.rounds > 1) {
-    counter = `Tour ${step.round}/${step.rounds} · Exercice ${step.index}/${step.count}`;
+    counter = `Série ${step.round}/${step.rounds} · Exercice ${step.index}/${step.count}`;
   } else if (step.kind === 'rest' && step.rounds) {
-    counter = `Tour ${step.round}/${step.rounds}`;
+    counter = `Série ${step.round}/${step.rounds}`;
   }
 
   return (
@@ -158,7 +161,7 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
           <TouchableOpacity
             onPress={() => {
               setPaused(true);
-              setGuideId(guideTarget);
+              setGuide({ id: guideTarget, reps: guideReps, sets: guideSets });
             }}
             style={styles.topBtn}
           >
@@ -182,7 +185,9 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
         ) : step.kind === 'rest' && step.previewId ? (
           <View style={{ alignItems: 'center' }}>
             <ExerciseVisual id={step.previewId} size={96} tone="light" />
-            <Text style={styles.preview}>À suivre : {step.next}</Text>
+            <Text style={styles.preview}>
+              À suivre : {step.next}{step.previewReps ? ` · ${step.previewReps} rép.` : ''}
+            </Text>
           </View>
         ) : (
           <Float>
@@ -193,6 +198,14 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
         )}
 
         <Text style={styles.name}>{step.name}</Text>
+
+        {step.kind === 'work' && step.reps ? (
+          <View style={styles.repsBox}>
+            <Icon name="bullseye" size={13} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.repsText}>Objectif : {step.reps} répétitions</Text>
+          </View>
+        ) : null}
+
         <Text style={styles.timer}>{formatMMSS(remaining)}</Text>
         {counter ? <Text style={styles.counter}>{counter}</Text> : null}
         <Text style={styles.hint}>{step.hint}</Text>
@@ -217,7 +230,12 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
         </TouchableOpacity>
       </View>
 
-      <ExerciseGuide id={guideId} onClose={() => setGuideId(null)} />
+      <ExerciseGuide
+        id={guide ? guide.id : null}
+        reps={guide ? guide.reps : null}
+        sets={guide ? guide.sets : null}
+        onClose={() => setGuide(null)}
+      />
     </LinearGradient>
   );
 }
@@ -240,6 +258,11 @@ const styles = StyleSheet.create({
   },
   preview: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '700', marginTop: 4 },
   name: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 10 },
+  repsBox: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginTop: 8,
+  },
+  repsText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   timer: { color: '#FFFFFF', fontSize: 84, fontWeight: '800', marginVertical: 2, fontVariant: ['tabular-nums'] },
   counter: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', marginBottom: 8 },
   hint: { color: 'rgba(255,255,255,0.92)', fontSize: 15, lineHeight: 22, textAlign: 'center', paddingHorizontal: 8 },

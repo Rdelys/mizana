@@ -15,11 +15,18 @@ Tu ne donnes pas d'avis médical.`;
 
 const catalog = () =>
   Object.entries(EXERCISES)
-    .map(([id, e]) => `- ${id} : ${e.name} (${e.muscles}, difficulté ${e.lvl}/3)`)
+    .map(([id, e]) => `- ${id} : ${e.name} (${e.muscles}, difficulté ${e.lvl}/3${e.motion === 'hold' ? ', exercice tenu' : ''})`)
     .join('\n');
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const num = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+
+// Répétitions par série : null pour les exercices tenus ou si absent
+function repsFor(id, v) {
+  if (EXERCISES[id] && EXERCISES[id].motion === 'hold') return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n > 0 ? Math.min(60, Math.max(3, n)) : null;
+}
 
 function cleanDay(d) {
   if (!d || typeof d !== 'object') return null;
@@ -34,6 +41,7 @@ function cleanDay(d) {
         id: e.id,
         work: Math.min(90, Math.max(15, Math.round(num(e.work, 40)))),
         rest: Math.min(90, Math.max(10, Math.round(num(e.rest, 20)))),
+        reps: repsFor(e.id, e.reps),
         tip: str(e.tip, 140),
       }));
     if (out.exercises.length < 3) return null;
@@ -43,7 +51,7 @@ function cleanDay(d) {
   return out;
 }
 
-function parseJSON(text) {
+export function parseJSON(text) {
   const clean = String(text).replace(/```json|```/g, '').trim();
   const a = clean.indexOf('{');
   const b = clean.lastIndexOf('}');
@@ -92,17 +100,18 @@ RÈGLES
 - 7 jours exactement (d de 0 à 6). Types possibles : "strength", "hiit", "walk", "family", "light", "rest".
 - Environ 3 à 4 séances strength/hiit, 2 marches (walk), 1 sortie famille (family), 1 jour léger ou repos (light).
 - Chaque jour doit être différent : varie les exercices et les groupes musculaires d’un jour à l’autre et d’une semaine à l’autre.
-- strength/hiit : 4 à 6 exercices, "rounds" de 2 à 4, "work" en secondes (20 à 60), "rest" en secondes (15 à 45).
+- strength/hiit : 4 à 6 exercices, "rounds" = nombre de séries (2 à 4), "work" en secondes (20 à 60), "rest" en secondes (15 à 45).
+- "reps" = nombre de répétitions à viser par série, adapté au niveau et au débutant (ex. 5 pompes, 8 fentes, 12 squats). Pour les exercices tenus (planche, planche latérale, superman, chaise contre le mur) mets null. Le temps "work" doit laisser assez de temps pour faire ces répétitions.
 - walk/family/light : fournis "minutes".
 - Progression douce d’une semaine à l’autre ; si les retours sont "dur" ou si des séances sont manquées, allège. Si "facile", augmente un peu. Une semaine un peu plus légère toutes les 4 semaines.
 - "tip" : conseil de technique court (moins de 100 caractères) en français.
 - Textes en français, simples, motivants.
 
 FORMAT JSON EXACT
-{"summary":"résumé de la semaine en une phrase","days":[{"d":0,"type":"strength","title":"Jambes et gainage","focus":"phrase courte","rounds":3,"exercises":[{"id":"squat","work":40,"rest":20,"tip":"..."}]},{"d":1,"type":"walk","title":"Marche rapide","focus":"...","minutes":30}]}`;
+{"summary":"résumé de la semaine en une phrase","days":[{"d":0,"type":"strength","title":"Jambes et gainage","focus":"phrase courte","rounds":3,"exercises":[{"id":"squat","work":40,"rest":20,"reps":12,"tip":"..."},{"id":"plank","work":30,"rest":20,"reps":null,"tip":"..."}]},{"d":1,"type":"walk","title":"Marche rapide","focus":"...","minutes":30}]}`;
 }
 
-async function callClaude(apiKey, prompt, signal) {
+export async function callClaude(apiKey, prompt, signal, system = SYSTEM, maxTokens = 3500) {
   let res;
   try {
     res = await fetch(API_URL, {
@@ -115,8 +124,8 @@ async function callClaude(apiKey, prompt, signal) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 3500,
-        system: SYSTEM,
+        max_tokens: maxTokens,
+        system,
         messages: [{ role: 'user', content: prompt }],
       }),
       signal,

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Alert, Switch, View } from 'react-native';
+import { Alert, Switch, Text, View } from 'react-native';
 import { colors } from '../theme';
 import {
-  Body, Button, Card, Chip, Field, Heading, Icon, Muted, Notice, Row, Screen, TimeStepper, Title,
+  Body, Button, Chip, Field, Icon, Muted, Notice, Row, Screen, Section, TimeStepper,
 } from '../components/UI';
 import { useApp } from '../context/AppContext';
 import { MODEL } from '../services/ai';
@@ -54,7 +54,7 @@ export default function SettingsScreen() {
   };
 
   const confirmReset = () => {
-    Alert.alert('Tout effacer ?', 'Poids, séances, programme IA et réglages seront supprimés de ce téléphone. Cette action est définitive.', [
+    Alert.alert('Tout effacer ?', 'Poids, séances, programme IA, boissons et réglages seront supprimés de ce téléphone. Cette action est définitive.', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Tout effacer',
@@ -67,12 +67,29 @@ export default function SettingsScreen() {
     ]);
   };
 
-  return (
-    <Screen>
-      <Title style={{ marginBottom: 14 }}>Réglages</Title>
+  const heroCell = (label, value, first) => (
+    <View
+      style={{
+        flex: 1, alignItems: 'center',
+        borderLeftWidth: first ? 0 : 1, borderLeftColor: 'rgba(255,255,255,0.25)',
+      }}
+    >
+      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }}>{value}</Text>
+    </View>
+  );
 
-      <Card>
-        <Heading icon="user">Mon profil</Heading>
+  const hero = (
+    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 18, paddingVertical: 14 }}>
+      {heroCell('Taille', `${fmtKg(profile.heightCm)} cm`, true)}
+      {heroCell('Départ', `${fmtKg(profile.startWeight)} kg`)}
+      {heroCell('Objectif', `${fmtKg(profile.goalWeight)} kg`)}
+    </View>
+  );
+
+  return (
+    <Screen title="Réglages" subtitle="Mon profil et mes rappels" hero={hero}>
+      <Section title="Mon profil" icon="user">
         <Muted style={{ marginBottom: 6 }}>Sexe (sert aux repères du tour de taille)</Muted>
         <Row style={{ marginBottom: 6 }}>
           {Object.entries(SEXES).map(([k, label]) => (
@@ -84,12 +101,11 @@ export default function SettingsScreen() {
         {error ? <Notice tone="danger">{error}</Notice> : null}
         {info ? <Notice tone="good">{info}</Notice> : null}
         <Button title="Enregistrer le profil" variant="secondary" onPress={commitProfile} />
-      </Card>
+      </Section>
 
-      <Card>
-        <Heading icon="robot" iconColor={colors.accent}>Intelligence artificielle</Heading>
+      <Section title="Intelligence artificielle" icon="robot" iconColor={colors.accent}>
         <Muted style={{ marginBottom: 10 }}>
-          Collez votre clé API Anthropic (console.anthropic.com). Modèle utilisé : {MODEL}.
+          Collez votre clé API Anthropic (console.anthropic.com). Elle sert au programme sportif et aux boissons. Modèle utilisé : {MODEL}.
         </Muted>
         <Field
           label="Clé API Anthropic"
@@ -112,10 +128,9 @@ export default function SettingsScreen() {
         <Notice tone="warn" style={{ marginTop: 12, marginBottom: 0 }}>
           La clé reste sur ce téléphone. Pour une application publiée, passez plutôt par votre propre serveur afin de ne jamais exposer la clé.
         </Notice>
-      </Card>
+      </Section>
 
-      <Card>
-        <Heading icon="bell">Rappels</Heading>
+      <Section title="Rappels" icon="bell">
         {REMINDER_LABELS.map(([k, icon, label]) => (
           <Row key={k} style={{ justifyContent: 'space-between', paddingVertical: 8 }}>
             <Icon name={icon} size={15} color={colors.primary} style={{ width: 28 }} />
@@ -130,10 +145,9 @@ export default function SettingsScreen() {
         ))}
         <Muted style={{ marginTop: 6 }}>Les rappels sont recalculés automatiquement à chaque changement.</Muted>
         <Button title="Tester une notification" icon="bell" variant="secondary" onPress={test} style={{ marginTop: 12 }} />
-      </Card>
+      </Section>
 
-      <Card>
-        <Heading icon="stopwatch">Mes heures</Heading>
+      <Section title="Mes heures" icon="stopwatch">
         <TimeStepper icon="sun" label="Réveil" value={settings.times.wake} onChange={(v) => updateSettings({ times: { wake: v } })} />
         <TimeStepper icon="walking" label="Marche après déjeuner" value={settings.times.lunchWalk} onChange={(v) => updateSettings({ times: { lunchWalk: v } })} />
         <TimeStepper icon="dumbbell" label="Séance du jour" value={settings.times.workout} onChange={(v) => updateSettings({ times: { workout: v } })} />
@@ -141,19 +155,16 @@ export default function SettingsScreen() {
         <TimeStepper icon="moon" label="Coucher" value={settings.times.bedtime} onChange={(v) => updateSettings({ times: { bedtime: v } })} />
         <TimeStepper icon="balance-scale" label="Pesée du dimanche" value={settings.times.weigh} onChange={(v) => updateSettings({ times: { weigh: v } })} />
         <Muted style={{ marginTop: 8 }}>Chaque pas change l’heure de 15 minutes.</Muted>
-      </Card>
+      </Section>
 
-      <Card>
-        <Heading icon="database">Données</Heading>
+      <Section title="Données" icon="database">
         <Muted style={{ marginBottom: 10 }}>
           Tout est enregistré uniquement sur ce téléphone (AsyncStorage). Si vous désinstallez l’application, les données sont perdues.
         </Muted>
         <Button title="Tout effacer et recommencer" icon="trash" variant="danger" onPress={confirmReset} />
-      </Card>
+      </Section>
 
-      <View style={{ marginTop: 4 }}>
-        <Muted style={{ textAlign: 'center' }}>Mizana V2 · repères généraux, pas d’avis médical.</Muted>
-      </View>
+      <Muted style={{ textAlign: 'center' }}>Mizana V2 · repères généraux, pas d’avis médical.</Muted>
     </Screen>
   );
 }

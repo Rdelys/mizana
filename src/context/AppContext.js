@@ -11,6 +11,7 @@ const initialState = {
   sessions: {},
   settings: DEFAULT_SETTINGS,
   aiPlan: null, // { startDate, endDate, weeks, summaries, days: { 'YYYY-MM-DD': spec } }
+  aiDrinks: null, // { startDate, endDate, days, mode, drinks: { 'YYYY-MM-DD': boisson } }
   aiKey: '', // clé Anthropic saisie par l'utilisateur
 };
 
@@ -25,6 +26,7 @@ function reducer(state, action) {
         sessions: d.sessions && typeof d.sessions === 'object' ? d.sessions : {},
         settings: mergeSettings(d.settings),
         aiPlan: d.aiPlan || null,
+        aiDrinks: d.aiDrinks || null,
         aiKey: typeof d.aiKey === 'string' ? d.aiKey : '',
       };
     }
@@ -57,6 +59,8 @@ function reducer(state, action) {
     }
     case 'SET_AI_PLAN':
       return { ...state, aiPlan: action.payload };
+    case 'SET_AI_DRINKS':
+      return { ...state, aiDrinks: action.payload };
     case 'SET_AI_KEY':
       return { ...state, aiKey: action.payload };
     case 'RESET':
@@ -87,9 +91,10 @@ export function AppProvider({ children }) {
       sessions: state.sessions,
       settings: state.settings,
       aiPlan: state.aiPlan,
+      aiDrinks: state.aiDrinks,
       aiKey: state.aiKey,
     });
-  }, [state.ready, state.profile, state.weighIns, state.sessions, state.settings, state.aiPlan, state.aiKey]);
+  }, [state.ready, state.profile, state.weighIns, state.sessions, state.settings, state.aiPlan, state.aiDrinks, state.aiKey]);
 
   const saveProfile = useCallback((p) => dispatch({ type: 'SET_PROFILE', payload: p }), []);
   const saveWeighIn = useCallback((e) => dispatch({ type: 'SAVE_WEIGHIN', payload: e }), []);
@@ -97,6 +102,7 @@ export function AppProvider({ children }) {
   const setSession = useCallback((date, session) => dispatch({ type: 'SET_SESSION', payload: { date, session } }), []);
   const updateSettings = useCallback((p) => dispatch({ type: 'SET_SETTINGS', payload: p }), []);
   const setAiPlan = useCallback((plan) => dispatch({ type: 'SET_AI_PLAN', payload: plan }), []);
+  const setAiDrinks = useCallback((plan) => dispatch({ type: 'SET_AI_DRINKS', payload: plan }), []);
   const setAiKey = useCallback((key) => dispatch({ type: 'SET_AI_KEY', payload: key }), []);
   const reset = useCallback(async () => {
     await clearState();
@@ -104,8 +110,10 @@ export function AppProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ state, saveProfile, saveWeighIn, deleteWeighIn, setSession, updateSettings, setAiPlan, setAiKey, reset }),
-    [state, saveProfile, saveWeighIn, deleteWeighIn, setSession, updateSettings, setAiPlan, setAiKey, reset]
+    () => ({
+      state, saveProfile, saveWeighIn, deleteWeighIn, setSession, updateSettings, setAiPlan, setAiDrinks, setAiKey, reset,
+    }),
+    [state, saveProfile, saveWeighIn, deleteWeighIn, setSession, updateSettings, setAiPlan, setAiDrinks, setAiKey, reset]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

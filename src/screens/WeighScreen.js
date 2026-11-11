@@ -3,18 +3,7 @@ import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme';
 import LineChart from '../components/LineChart';
 import {
-  Body,
-  Button,
-  Card,
-  Field,
-  Heading,
-  Muted,
-  Notice,
-  ProgressBar,
-  Row,
-  Screen,
-  StatTile,
-  Title,
+  Body, Button, Field, Muted, Notice, ProgressBar, Row, Screen, Section, StatRow,
 } from '../components/UI';
 import { useApp } from '../context/AppContext';
 import { computeStats, fmtKg, parseNum, round1, sortedWeighIns } from '../utils/calc';
@@ -73,12 +62,30 @@ export default function WeighScreen({ today }) {
 
   const toneColor = (tone) => (tone === 'good' ? 'good' : tone === 'warn' ? 'warn' : tone === 'danger' ? 'danger' : undefined);
 
-  return (
-    <Screen>
-      <Title style={{ marginBottom: 14 }}>Pesée</Title>
+  // Poids actuel dans l'en-tête bleu
+  const hero = stats ? (
+    <View>
+      <Row style={{ alignItems: 'flex-end' }}>
+        <Text style={{ fontSize: 46, fontWeight: '800', color: '#FFFFFF' }}>{fmtKg(stats.last.weight)}</Text>
+        <Text style={{ fontSize: 18, color: 'rgba(255,255,255,0.85)', marginLeft: 6, marginBottom: 8 }}>kg</Text>
+        {stats.deltaPrev !== null && (
+          <Text style={{ marginLeft: 12, marginBottom: 10, fontWeight: '800', color: '#FFFFFF' }}>
+            {fmtKg(stats.deltaPrev, true)} kg
+          </Text>
+        )}
+      </Row>
+      <ProgressBar value={stats.progress} color="#FFFFFF" trackColor="rgba(255,255,255,0.28)" style={{ marginVertical: 10 }} />
+      <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 13 }}>
+        Objectif {fmtKg(profile.goalWeight)} kg · reste {fmtKg(stats.remaining)} kg · {Math.round(stats.progress * 100)} %
+      </Text>
+    </View>
+  ) : (
+    <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 15 }}>Enregistrez votre première pesée ci-dessous.</Text>
+  );
 
-      <Card>
-        <Heading>Nouvelle pesée</Heading>
+  return (
+    <Screen title="Pesée" subtitle="Suivi de mon poids" hero={hero}>
+      <Section title="Nouvelle pesée" icon="plus-circle">
         <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
           <Button title="◀" variant="secondary" small onPress={() => setDate(addDays(date, -1))} />
           <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, textAlign: 'center', flex: 1 }}>
@@ -100,81 +107,77 @@ export default function WeighScreen({ today }) {
         <Muted style={{ marginTop: 10 }}>
           Conseil : chaque dimanche matin, à jeun, après être passé aux toilettes, avec la même balance.
         </Muted>
-      </Card>
+      </Section>
 
-      {stats && (
-        <>
-          <Card>
-            <Heading>Mes calculs</Heading>
-            <Row style={{ marginBottom: 10 }}>
-              <StatTile label="Poids actuel" value={`${fmtKg(stats.last.weight)} kg`} />
-              <StatTile
-                label="IMC"
-                value={fmtKg(stats.bmi)}
-                sub={stats.bmiLabel}
-                tone={toneColor(stats.bmiTone)}
-              />
-            </Row>
-            <Row style={{ marginBottom: 10 }}>
-              <StatTile
-                label="Depuis la dernière"
-                value={stats.deltaPrev === null ? '—' : `${fmtKg(stats.deltaPrev, true)} kg`}
-                tone={stats.deltaPrev === null ? undefined : stats.deltaPrev <= 0 ? 'good' : 'warn'}
-              />
-              <StatTile
-                label="Depuis le début"
-                value={`${fmtKg(stats.deltaTotal, true)} kg`}
-                tone={stats.deltaTotal <= 0 ? 'good' : 'warn'}
-              />
-            </Row>
-            <Row style={{ marginBottom: 12 }}>
-              <StatTile label="Reste à perdre" value={`${fmtKg(stats.remaining)} kg`} sub={`Objectif ${fmtKg(profile.goalWeight)} kg`} />
-              <StatTile
-                label="Rythme moyen"
-                value={stats.perWeek === null ? '—' : `${fmtKg(stats.perWeek)} kg`}
-                sub={stats.perWeek === null ? 'Il faut 1 semaine' : 'par semaine'}
-              />
-            </Row>
-            <ProgressBar value={stats.progress} />
-            <Muted style={{ marginTop: 6 }}>{Math.round(stats.progress * 100)} % de l’objectif atteint</Muted>
+      {stats ? (
+        <Section title="Courbe" icon="chart-line">
+          <LineChart data={chartData} goal={profile.goalWeight} />
+          {chartData.length < 2 && <Muted style={{ marginTop: 6 }}>La courbe apparaît dès la deuxième pesée.</Muted>}
+        </Section>
+      ) : null}
 
-            {stats.etaISO ? (
-              <Body style={{ marginTop: 10 }}>
-                Au rythme actuel, objectif vers le <Text style={{ fontWeight: '800' }}>{formatShortYear(stats.etaISO)}</Text>.
-              </Body>
-            ) : null}
+      {stats ? (
+        <Section title="Mes calculs" icon="calculator">
+          <StatRow
+            style={{ marginBottom: 10 }}
+            items={[
+              { label: 'IMC', value: fmtKg(stats.bmi), sub: stats.bmiLabel, tone: toneColor(stats.bmiTone) },
+              {
+                label: 'Depuis la dernière',
+                value: stats.deltaPrev === null ? '—' : `${fmtKg(stats.deltaPrev, true)} kg`,
+                tone: stats.deltaPrev === null ? undefined : stats.deltaPrev <= 0 ? 'good' : 'warn',
+              },
+            ]}
+          />
+          <StatRow
+            style={{ marginBottom: 12 }}
+            items={[
+              {
+                label: 'Depuis le début',
+                value: `${fmtKg(stats.deltaTotal, true)} kg`,
+                tone: stats.deltaTotal <= 0 ? 'good' : 'warn',
+              },
+              {
+                label: 'Rythme moyen',
+                value: stats.perWeek === null ? '—' : `${fmtKg(stats.perWeek)} kg`,
+                sub: stats.perWeek === null ? 'Il faut 1 semaine' : 'par semaine',
+              },
+            ]}
+          />
 
-            {stats.waist ? (
-              <Body style={{ marginTop: 8 }}>
-                Tour de taille : {fmtKg(stats.waist.last)} cm
-                {stats.waist.delta !== null ? ` (${fmtKg(stats.waist.delta, true)} cm depuis le début)` : ''}
-              </Body>
-            ) : null}
+          {stats.etaISO ? (
+            <Body style={{ marginTop: 4 }}>
+              Au rythme actuel, objectif vers le <Text style={{ fontWeight: '800' }}>{formatShortYear(stats.etaISO)}</Text>.
+            </Body>
+          ) : null}
 
-            {stats.waist && stats.waist.risk ? (
-              <Notice tone={stats.waist.risk.tone} style={{ marginTop: 10, marginBottom: 0 }}>
-                Tour de taille : {stats.waist.risk.label.toLowerCase()}. Repère pour {profile.sex === 'femme' ? 'une femme' : 'un homme'} : moins de {stats.waist.risk.target} cm.
-                {stats.waist.ratio >= 0.5 ? ` Rapport taille/hauteur ${stats.waist.ratio.toFixed(2).replace('.', ',')} (idéal : sous 0,5).` : ''}
-              </Notice>
-            ) : null}
-          </Card>
+          {stats.waist ? (
+            <Body style={{ marginTop: 8 }}>
+              Tour de taille : {fmtKg(stats.waist.last)} cm
+              {stats.waist.delta !== null ? ` (${fmtKg(stats.waist.delta, true)} cm depuis le début)` : ''}
+            </Body>
+          ) : null}
 
-          {stats.alerts.map((a, i) => (
-            <Notice key={`alert${i}`} tone={a.tone}>
-              {a.text}
+          {stats.waist && stats.waist.risk ? (
+            <Notice tone={stats.waist.risk.tone} style={{ marginTop: 10, marginBottom: 0 }}>
+              Tour de taille : {stats.waist.risk.label.toLowerCase()}. Repère pour {profile.sex === 'femme' ? 'une femme' : 'un homme'} : moins de {stats.waist.risk.target} cm.
+              {stats.waist.ratio >= 0.5 ? ` Rapport taille/hauteur ${stats.waist.ratio.toFixed(2).replace('.', ',')} (idéal : sous 0,5).` : ''}
             </Notice>
-          ))}
+          ) : null}
 
-          <Card>
-            <Heading>Courbe</Heading>
-            <LineChart data={chartData} goal={profile.goalWeight} />
-            {chartData.length < 2 && <Muted style={{ marginTop: 6 }}>La courbe apparaît dès la deuxième pesée.</Muted>}
-          </Card>
-        </>
-      )}
+          {stats.alerts.length > 0 ? (
+            <View style={{ marginTop: 12 }}>
+              {stats.alerts.map((a, i) => (
+                <Notice key={`alert${i}`} tone={a.tone}>
+                  {a.text}
+                </Notice>
+              ))}
+            </View>
+          ) : null}
+        </Section>
+      ) : null}
 
-      <Card>
-        <Heading>Historique</Heading>
+      <Section title="Historique" icon="history">
         {sorted.length === 0 && <Muted>Aucune pesée pour le moment.</Muted>}
         {[...sorted].reverse().map((e, i, arr) => {
           const older = arr[i + 1];
@@ -211,7 +214,7 @@ export default function WeighScreen({ today }) {
             </View>
           );
         })}
-      </Card>
+      </Section>
     </Screen>
   );
 }

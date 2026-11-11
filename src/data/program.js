@@ -40,6 +40,27 @@ const TYPE_META = {
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
+// Exercices tenus (planche, superman...) : pas de répétitions
+const isHold = (id) => !!(EXERCISES[id] && EXERCISES[id].motion === 'hold');
+
+// Répétitions : null si absent (anciens programmes IA) ou exercice tenu
+function repsOf(id, v) {
+  if (isHold(id)) return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n > 0 ? clamp(n, 3, 60) : null;
+}
+
+// Repères du programme standard (hors IA), augmentés avec le niveau
+const BASE_REPS = {
+  squat: 8, sumoSquat: 8, lunge: 8, sideLunge: 8, bridge: 10, pushupKnee: 6, pushup: 6,
+  tricepsDip: 6, kneeraise: 20, jacks: 15, climbers: 12, legraise: 6, crunch: 10, bicycle: 12,
+  skater: 10, burpee: 4,
+};
+function defaultReps(id, level) {
+  if (isHold(id) || !BASE_REPS[id]) return null;
+  return BASE_REPS[id] + level * 2;
+}
+
 function resolveExercises(weekday, level) {
   switch (weekday) {
     case 1:
@@ -56,7 +77,7 @@ function resolveExercises(weekday, level) {
   }
 }
 
-// items : [{ id, work, rest, tip }]
+// items : [{ id, work, rest, tip, reps }]
 function buildStrengthSteps(items, rounds) {
   const roundRest = 45;
   const steps = [];
@@ -67,6 +88,7 @@ function buildStrengthSteps(items, rounds) {
       const ex = EXERCISES[it.id];
       steps.push({
         kind: 'work', exId: it.id, name: ex.name, hint: ex.hint, tip: it.tip || null,
+        reps: it.reps || null,
         seconds: it.work, round: r, rounds, index: i + 1, count: items.length,
       });
       const lastOfRound = i === items.length - 1;
@@ -75,10 +97,10 @@ function buildStrengthSteps(items, rounds) {
         const nextItem = lastOfRound ? items[0] : items[i + 1];
         steps.push({
           kind: 'rest',
-          name: lastOfRound ? 'Repos entre les tours' : 'Repos',
+          name: lastOfRound ? 'Repos entre les séries' : 'Repos',
           hint: 'Respirez calmement, une gorgée d’eau si besoin.',
           seconds: lastOfRound ? roundRest : it.rest,
-          round: r, rounds, previewId: nextItem.id,
+          round: r, rounds, previewId: nextItem.id, previewReps: nextItem.reps || null,
         });
       }
     });
@@ -124,6 +146,7 @@ function specToSteps(spec) {
         work: clamp(Math.round(e.work || 40), 15, 90),
         rest: clamp(Math.round(e.rest || 20), 10, 90),
         tip: e.tip || null,
+        reps: repsOf(e.id, e.reps),
       }));
     if (items.length < 2) return null;
     return buildStrengthSteps(items, clamp(Math.round(spec.rounds || 3), 1, 5));
@@ -151,7 +174,10 @@ export function getDayPlan(dateISO, level, time, aiPlan) {
       exIds = resolveExercises(weekday, level);
       const work = [30, 35, 40, 45][level];
       const rest = [30, 25, 20, 20][level];
-      steps = buildStrengthSteps(exIds.map((id) => ({ id, work, rest })), level >= 2 ? 4 : 3);
+      steps = buildStrengthSteps(
+        exIds.map((id) => ({ id, work, rest, reps: defaultReps(id, level) })),
+        level >= 2 ? 4 : 3
+      );
     } else if (info.type === 'walk') {
       steps = buildWalkSteps(Math.min(45, info.baseMin + 5 * level));
     } else if (info.type === 'family') {
@@ -165,12 +191,20 @@ export function getDayPlan(dateISO, level, time, aiPlan) {
   steps = attachNext(steps);
   const totalSeconds = steps.reduce((sum, s) => sum + s.seconds, 0);
 
+  // Exercices de la première série avec leurs répétitions, et nombre de séries
+  const exItems = steps
+    .filter((s) => s.kind === 'work' && s.exId && s.round === 1)
+    .map((s) => ({ id: s.exId, reps: s.reps || null }));
+  const firstWork = steps.find((s) => s.kind === 'work' && s.exId);
+
   return {
     date: dateISO,
     weekday,
     ...meta,
     durationMin: Math.round(totalSeconds / 60),
     exIds,
+    exItems,
+    sets: firstWork ? firstWork.rounds : null,
     exercises: exIds.map((id) => EXERCISES[id].name),
     steps,
     level,

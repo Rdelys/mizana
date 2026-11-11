@@ -19,34 +19,118 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, shadow } from '../theme';
 import { FadeIn, PressScale } from './Motion';
 
+const toneColor = (tone) =>
+  tone === 'good' ? colors.good : tone === 'warn' ? colors.warn : tone === 'danger' ? colors.danger : colors.text;
+
 export function Icon({ name, size = 18, color = colors.text, style }) {
   return <FontAwesome5 name={name} size={size} color={color} solid style={style} />;
 }
 
-// Chaque bloc enfant apparaît en cascade
-export function Screen({ children, contentContainerStyle }) {
+// Page unie : en-tête bleu + une seule feuille blanche. Chaque bloc enfant apparaît en cascade.
+// Sans "title" : ancien affichage (utilisé par l'écran de démarrage).
+export function Screen({ children, title, subtitle, hero, right, contentContainerStyle }) {
   const insets = useSafeAreaInsets();
   const items = React.Children.toArray(children);
+
+  if (!title) {
+    return (
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={[{ padding: 16, paddingBottom: 32 }, contentContainerStyle]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {items.map((c, i) => (
+            <FadeIn key={(c && c.key) || i} delay={Math.min(i, 9) * 55}>
+              {c}
+            </FadeIn>
+          ))}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}
+      style={{ flex: 1, backgroundColor: colors.primary }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={[{ padding: 16, paddingBottom: 32 }, contentContainerStyle]}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {items.map((c, i) => (
-          <FadeIn key={(c && c.key) || i} delay={Math.min(i, 9) * 55}>
-            {c}
-          </FadeIn>
-        ))}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
+        >
+          <View style={styles.bubbleA} />
+          <View style={styles.bubbleB} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              {subtitle ? <Text style={styles.headerSub}>{subtitle}</Text> : null}
+              <Text style={styles.headerTitle}>{title}</Text>
+            </View>
+            {right}
+          </View>
+          {hero ? <View style={{ marginTop: 16 }}>{hero}</View> : null}
+        </LinearGradient>
+
+        <View style={[styles.sheet, contentContainerStyle]}>
+          {items.map((c, i) => (
+            <FadeIn key={(c && c.key) || i} delay={Math.min(i, 9) * 55} style={i > 0 ? styles.sep : null}>
+              {c}
+            </FadeIn>
+          ))}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// Bloc d'une page unie : titre + contenu (pas de bordure, la séparation vient de Screen)
+export function Section({ title, icon, iconColor = colors.primary, right, children, style }) {
+  return (
+    <View style={style}>
+      {title ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          {icon ? (
+            <View style={styles.headingIcon}>
+              <Icon name={icon} size={13} color={iconColor} />
+            </View>
+          ) : null}
+          <Text style={[styles.heading, { marginBottom: 0, flex: 1 }]}>{title}</Text>
+          {right}
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+// Zone teintée à l'intérieur d'une page (mise en avant, sans ombre)
+export function Panel({ children, style, tone }) {
+  const bg = tone === 'accent' ? colors.accentSoft : tone === 'white' ? '#FFFFFF' : colors.primarySoft;
+  return <View style={[styles.panel, { backgroundColor: bg }, style]}>{children}</View>;
+}
+
+export function Pill({ label, icon, light, style }) {
+  const fg = light ? '#FFFFFF' : colors.primaryDark;
+  return (
+    <View style={[styles.pill, { backgroundColor: light ? 'rgba(255,255,255,0.2)' : colors.primarySoft }, style]}>
+      {icon ? <Icon name={icon} size={11} color={fg} style={{ marginRight: 6 }} /> : null}
+      <Text style={{ color: fg, fontSize: 12, fontWeight: '800' }}>{label}</Text>
+    </View>
+  );
+}
+
+// Ancienne carte, conservée pour les écrans qui l'utilisent encore
 export function Card({ children, style, tone }) {
   const toneStyle =
     tone === 'primary'
@@ -120,8 +204,10 @@ export function Button({ title, onPress, variant = 'primary', disabled, style, s
           <ActivityIndicator color={v.fg} />
         ) : (
           <>
-            {icon ? <Icon name={icon} size={small ? 13 : 15} color={v.fg} style={{ marginRight: 8 }} /> : null}
-            <Text style={[styles.buttonText, small && { fontSize: 14 }, { color: v.fg }]}>{title}</Text>
+            {icon ? (
+              <Icon name={icon} size={small ? 13 : 15} color={v.fg} style={title ? { marginRight: 8 } : null} />
+            ) : null}
+            {title ? <Text style={[styles.buttonText, small && { fontSize: 14 }, { color: v.fg }]}>{title}</Text> : null}
           </>
         )}
       </View>
@@ -142,14 +228,14 @@ export function Chip({ label, selected, onPress, style, icon }) {
   );
 }
 
-export function ProgressBar({ value, color = colors.primary, style }) {
+export function ProgressBar({ value, color = colors.primary, trackColor = colors.border, style }) {
   const pct = Math.max(0, Math.min(1, value || 0)) * 100;
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(a, { toValue: pct, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [pct]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <View style={[styles.progressTrack, style]}>
+    <View style={[styles.progressTrack, { backgroundColor: trackColor }, style]}>
       <Animated.View
         style={[
           styles.progressFill,
@@ -177,13 +263,28 @@ export function Notice({ tone = 'info', children, style }) {
 }
 
 export function StatTile({ label, value, sub, tone, style }) {
-  const color =
-    tone === 'good' ? colors.good : tone === 'warn' ? colors.warn : tone === 'danger' ? colors.danger : colors.text;
   return (
     <View style={[styles.tile, style]}>
       <Text style={styles.tileLabel}>{label}</Text>
-      <Text style={[styles.tileValue, { color }]}>{value}</Text>
+      <Text style={[styles.tileValue, { color: toneColor(tone) }]}>{value}</Text>
       {sub ? <Text style={styles.tileSub}>{sub}</Text> : null}
+    </View>
+  );
+}
+
+// Bandeau de chiffres séparés par de fines lignes (au lieu de tuiles isolées)
+export function StatRow({ items, style }) {
+  return (
+    <View style={[styles.statRow, style]}>
+      {items.map((it, i) => (
+        <View key={it.label} style={[styles.statCell, i > 0 && styles.statDivider]}>
+          <Text style={styles.tileLabel}>{it.label}</Text>
+          <Text style={[styles.tileValue, { color: toneColor(it.tone) }]} numberOfLines={1} adjustsFontSizeToFit>
+            {it.value}
+          </Text>
+          {it.sub ? <Text style={styles.tileSub}>{it.sub}</Text> : null}
+        </View>
+      ))}
     </View>
   );
 }
@@ -250,6 +351,30 @@ export function Row({ children, style }) {
 }
 
 const styles = StyleSheet.create({
+  header: { paddingHorizontal: 20, paddingBottom: 48, overflow: 'hidden' },
+  bubbleA: {
+    position: 'absolute', top: -70, right: -60, width: 210, height: 210, borderRadius: 105,
+    backgroundColor: '#FFFFFF', opacity: 0.07,
+  },
+  bubbleB: {
+    position: 'absolute', bottom: -40, left: -50, width: 150, height: 150, borderRadius: 75,
+    backgroundColor: colors.accent, opacity: 0.25,
+  },
+  headerSub: { color: 'rgba(255,255,255,0.78)', fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  headerTitle: { color: '#FFFFFF', fontSize: 30, fontWeight: '800' },
+  sheet: {
+    flexGrow: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -28,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  sep: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 22, paddingTop: 22 },
+  panel: { borderRadius: radius.lg, padding: 14 },
+  pill: { flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 11 },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -295,18 +420,21 @@ const styles = StyleSheet.create({
   },
   chipSelected: { backgroundColor: colors.primary },
   chipText: { color: colors.primaryDark, fontWeight: '700', fontSize: 14 },
-  progressTrack: { height: 10, borderRadius: 999, backgroundColor: colors.border, overflow: 'hidden' },
+  progressTrack: { height: 10, borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
   notice: { flexDirection: 'row', borderRadius: radius.md, padding: 12, marginBottom: 10 },
   tile: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, padding: 12, marginHorizontal: 4 },
   tileLabel: { fontSize: 12, color: colors.muted, marginBottom: 2 },
   tileValue: { fontSize: 20, fontWeight: '800' },
   tileSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  statRow: { flexDirection: 'row', backgroundColor: colors.bg, borderRadius: radius.md, paddingVertical: 12 },
+  statCell: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
+  statDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
   fieldLabel: { fontSize: 13, color: colors.muted, marginBottom: 4, fontWeight: '600' },
   fieldRow: { flexDirection: 'row', alignItems: 'center' },
   input: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,

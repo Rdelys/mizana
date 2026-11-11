@@ -12,13 +12,15 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import WeighScreen from './src/screens/WeighScreen';
 import ProgramScreen from './src/screens/ProgramScreen';
+import DrinksScreen from './src/screens/DrinksScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import WorkoutScreen from './src/screens/WorkoutScreen';
 
 const TABS = [
-  { key: 'home', label: 'Aujourd’hui', icon: 'home' },
+  { key: 'home', label: 'Accueil', icon: 'home' },
   { key: 'weigh', label: 'Pesée', icon: 'balance-scale' },
   { key: 'program', label: 'Programme', icon: 'calendar-alt' },
+  { key: 'drinks', label: 'Boisson', icon: 'blender' },
   { key: 'settings', label: 'Réglages', icon: 'cog' },
 ];
 
@@ -38,7 +40,7 @@ function TabItem({ t, active, onPress }) {
           ],
         }}
       >
-        <Icon name={t.icon} size={20} color={active ? colors.primary : colors.muted} />
+        <Icon name={t.icon} size={19} color={active ? colors.primary : colors.muted} />
         <Text style={[styles.tabLabel, active && { color: colors.primary, fontWeight: '800' }]}>{t.label}</Text>
       </Animated.View>
       <Animated.View style={[styles.dot, { opacity: a, transform: [{ scale: a }] }]} />
@@ -96,11 +98,12 @@ function Root() {
       );
     } else {
       content = (
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={{ flex: 1, backgroundColor: colors.primary }}>
           <View style={{ flex: 1 }}>
             {tab === 'home' && <HomeScreen today={today} nav={nav} />}
             {tab === 'weigh' && <WeighScreen today={today} />}
             {tab === 'program' && <ProgramScreen today={today} nav={nav} />}
+            {tab === 'drinks' && <DrinksScreen today={today} nav={nav} />}
             {tab === 'settings' && <SettingsScreen />}
           </View>
           <TabBar tab={tab} setTab={setTab} />
@@ -109,8 +112,12 @@ function Root() {
     }
   }
 
+  // Icônes claires sur les en-têtes bleus, sombres sur le splash blanc et l'écran de démarrage
+  const statusStyle = !splashDone || !hasProfile ? 'dark' : 'light';
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: hasProfile ? colors.primary : colors.bg }}>
+      <StatusBar style={statusStyle} />
       {content}
       {!splashDone && <SplashScreen ready={state.ready} onDone={() => setSplashDone(true)} />}
     </View>
@@ -120,7 +127,6 @@ function Root() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
       <AppProvider>
         <Root />
       </AppProvider>
@@ -132,14 +138,9 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
     paddingTop: 10,
-    shadowColor: '#1E4FD8',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 12,
   },
   tab: { flex: 1, alignItems: 'center' },
   tabLabel: { fontSize: 11, color: colors.muted, marginTop: 4 },
