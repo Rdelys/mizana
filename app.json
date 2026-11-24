@@ -3,7 +3,7 @@
   "expo": {
     "name": "Mizana",
     "slug": "mizana",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -18,11 +18,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.devart.mizana",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.devart.mizana",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1E4FD8"
