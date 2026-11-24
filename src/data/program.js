@@ -1,4 +1,5 @@
-// Programme de Mizana : règles fixes (hors ligne) + programme généré par l'IA.
+// Programme de Mizana : une séance du soir à la maison (pompes + planche).
+// Règles fixes (hors ligne) + programme généré par l'IA.
 import { addDays, daysBetween, weekdayOf } from '../utils/dates';
 import { EXERCISES } from './exercises';
 
@@ -6,75 +7,53 @@ export { EXERCISES };
 
 export const FEELINGS = { facile: 'Facile', correct: 'Correct', dur: 'Trop dur' };
 
+const BASE_TITLE = 'Pompes et planche';
+
 const WARMUP = [
-  { name: 'Marche sur place', hint: 'Marchez sur place en balançant les bras, rythme tranquille.', seconds: 60, icon: 'walking' },
-  { name: 'Rotations épaules et hanches', hint: 'Grands cercles avec les épaules, puis avec les hanches. Dans les deux sens.', seconds: 60, icon: 'sync-alt' },
-  { name: 'Montées de genoux douces', hint: 'Rythme léger pour faire monter la chaleur du corps.', seconds: 60, icon: 'running' },
+  { name: 'Rotations épaules et poignets', hint: 'Grands cercles avec les épaules, puis avec les poignets. Dans les deux sens.', seconds: 45, icon: 'sync-alt' },
+  { name: 'Mobilité des bras', hint: 'Bras tendus, ouvrez et croisez devant vous, en rythme tranquille.', seconds: 45, icon: 'expand-arrows-alt' },
 ];
 
 const COOLDOWN = [
-  { name: 'Étirement des cuisses', hint: 'Debout, tirez un talon vers la fesse 20 s, puis changez de jambe.', seconds: 60, icon: 'spa' },
-  { name: 'Étirement du dos et des épaules', hint: 'Bras croisés devant, puis bras tendus vers le haut. Respirez lentement.', seconds: 60, icon: 'spa' },
-  { name: 'Respiration calme', hint: 'Inspirez 4 secondes, expirez 6 secondes. Laissez le rythme cardiaque redescendre.', seconds: 60, icon: 'heartbeat' },
+  { name: 'Étirement de la poitrine', hint: 'Mains jointes derrière le dos, poitrine ouverte, tenez 20 secondes.', seconds: 45, icon: 'spa' },
+  { name: 'Posture de l’enfant', hint: 'À genoux, fesses sur les talons, bras tendus devant vous. Respirez lentement.', seconds: 45, icon: 'spa' },
+  { name: 'Respiration calme', hint: 'Inspirez 4 secondes, expirez 6 secondes. Laissez le rythme cardiaque redescendre.', seconds: 30, icon: 'heartbeat' },
 ];
-
-// 0 = dimanche ... 6 = samedi
-export const DAY_INFO = {
-  1: { type: 'strength', icon: 'dumbbell', emoji: '🏋️', title: 'Jambes et gainage', desc: 'Cuisses, fessiers et ventre : les gros muscles qui consomment le plus d’énergie.' },
-  2: { type: 'walk', icon: 'walking', emoji: '🚶', title: 'Marche rapide', baseMin: 30, desc: 'Rythme où vous pouvez parler mais pas chanter.' },
-  3: { type: 'strength', icon: 'bolt', emoji: '💪', title: 'Haut du corps et cardio', desc: 'Bras, poitrine, ventre et un peu de cardio.' },
-  4: { type: 'walk', icon: 'walking', emoji: '🚶', title: 'Marche rapide', baseMin: 30, desc: 'Un peu plus longue quand le niveau monte.' },
-  5: { type: 'strength', icon: 'fire', emoji: '🔥', title: 'Corps entier', desc: 'Un peu de tout : jambes, bras, fessiers et ventre.' },
-  6: { type: 'family', icon: 'users', emoji: '👨‍👧', title: 'Sortie active en famille', baseMin: 45, desc: 'Promenade, jeux dehors, vélo : bougez ensemble.' },
-  0: { type: 'light', icon: 'spa', emoji: '🧘', title: 'Repos actif et pesée', baseMin: 20, desc: 'Marche douce, étirements, et pesée du dimanche.' },
-};
-
-const TYPE_META = {
-  strength: { icon: 'dumbbell', emoji: '🏋️', title: 'Renforcement' },
-  hiit: { icon: 'fire', emoji: '🔥', title: 'Cardio intense' },
-  walk: { icon: 'walking', emoji: '🚶', title: 'Marche rapide' },
-  family: { icon: 'users', emoji: '👨‍👧', title: 'Sortie active en famille' },
-  light: { icon: 'spa', emoji: '🧘', title: 'Repos actif' },
-  rest: { icon: 'spa', emoji: '🧘', title: 'Repos actif' },
-};
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-// Exercices tenus (planche, superman...) : pas de répétitions
+// Exercices tenus (planches) : pas de répétitions
 const isHold = (id) => !!(EXERCISES[id] && EXERCISES[id].motion === 'hold');
 
-// Répétitions : null si absent (anciens programmes IA) ou exercice tenu
+// Répétitions : null pour un exercice tenu ou si absent
 function repsOf(id, v) {
   if (isHold(id)) return null;
   const n = Math.round(Number(v));
-  return Number.isFinite(n) && n > 0 ? clamp(n, 3, 60) : null;
+  return Number.isFinite(n) && n > 0 ? clamp(n, 3, 40) : null;
 }
 
-// Repères du programme standard (hors IA), augmentés avec le niveau
-const BASE_REPS = {
-  squat: 8, sumoSquat: 8, lunge: 8, sideLunge: 8, bridge: 10, pushupKnee: 6, pushup: 6,
-  tricepsDip: 6, kneeraise: 20, jacks: 15, climbers: 12, legraise: 6, crunch: 10, bicycle: 12,
-  skater: 10, burpee: 4,
-};
-function defaultReps(id, level) {
-  if (isHold(id) || !BASE_REPS[id]) return null;
-  return BASE_REPS[id] + level * 2;
-}
+// Séance standard (sans IA), selon le niveau (0 à 3)
+const LEVELS = [
+  { push: 'pushupKnee', reps: 6, plank: 'plankKnee', hold: 20, side: null, rounds: 3 },
+  { push: 'pushupKnee', reps: 10, plank: 'plank', hold: 25, side: null, rounds: 3 },
+  { push: 'pushup', reps: 6, plank: 'plank', hold: 35, side: null, rounds: 3 },
+  { push: 'pushup', reps: 10, plank: 'plank', hold: 45, side: 'sidePlank', rounds: 4 },
+];
 
-function resolveExercises(weekday, level) {
-  switch (weekday) {
-    case 1:
-      return ['squat', 'lunge', 'bridge', 'plank'];
-    case 3:
-      return [level >= 1 ? 'jacks' : 'kneeraise', level >= 2 ? 'pushup' : 'pushupKnee', 'climbers', 'plank'];
-    case 5: {
-      const base = ['squat', level >= 2 ? 'pushup' : 'pushupKnee', 'bridge', 'legraise'];
-      if (level >= 2) base.push('climbers');
-      return base;
-    }
-    default:
-      return [];
-  }
+// Le dimanche (jour de pesée) la séance est un peu plus légère
+function defaultSession(level, weekday) {
+  const L = LEVELS[level];
+  const light = weekday === 0;
+  const reps = light ? Math.max(4, Math.round(L.reps * 0.7)) : L.reps;
+  const rounds = light ? Math.max(2, L.rounds - 1) : L.rounds;
+  const hold = light ? Math.round(L.hold * 0.8) : L.hold;
+
+  const items = [
+    { id: L.push, work: clamp(reps * 3 + 15, 25, 90), rest: 30, reps },
+    { id: L.plank, work: hold, rest: 30, reps: null },
+  ];
+  if (L.side) items.push({ id: L.side, work: Math.max(15, Math.round(hold / 2)), rest: 30, reps: null });
+  return { items, rounds, light };
 }
 
 // items : [{ id, work, rest, tip, reps }]
@@ -109,51 +88,24 @@ function buildStrengthSteps(items, rounds) {
   return steps;
 }
 
-function buildWalkSteps(minutes) {
-  const fast = Math.max(10, minutes - 10);
-  return [
-    { kind: 'warmup', icon: 'walking', name: 'Marche tranquille', hint: 'Démarrez doucement, épaules relâchées.', seconds: 5 * 60 },
-    { kind: 'work', icon: 'walking', name: 'Marche rapide', hint: 'Pas soutenus, bras qui balancent, dos droit. Vous pouvez parler, mais pas chanter.', seconds: fast * 60, round: 1, rounds: 1, index: 1, count: 1 },
-    { kind: 'cool', icon: 'spa', name: 'Retour au calme', hint: 'Ralentissez petit à petit, respirez profondément.', seconds: 5 * 60 },
-  ];
-}
-
-function buildFamilySteps(minutes) {
-  return [
-    { kind: 'work', icon: 'users', name: 'Marche et jeux avec l’enfant', hint: 'Marche, jeux de course, vélo, ballon… L’important : rester en mouvement.', seconds: minutes * 60, round: 1, rounds: 1, index: 1, count: 1 },
-  ];
-}
-
-function buildLightSteps() {
-  return [
-    { kind: 'warmup', icon: 'walking', name: 'Marche douce', hint: 'Marche à rythme tranquille, sans effort.', seconds: 15 * 60 },
-    { kind: 'cool', icon: 'spa', name: 'Étirements', hint: 'Jambes, dos, épaules. Tenez chaque position 20 à 30 secondes.', seconds: 5 * 60 },
-  ];
-}
-
 function attachNext(steps) {
   return steps.map((s, i) => ({ ...s, next: steps[i + 1] ? steps[i + 1].name : null }));
 }
 
-// Transforme un jour généré par l'IA en étapes
+// Transforme un jour généré par l'IA en étapes (null si le jour n'est pas utilisable)
 function specToSteps(spec) {
-  if (!spec) return null;
-  if (spec.type === 'strength' || spec.type === 'hiit') {
-    const items = (spec.exercises || [])
-      .filter((e) => e && EXERCISES[e.id])
-      .map((e) => ({
-        id: e.id,
-        work: clamp(Math.round(e.work || 40), 15, 90),
-        rest: clamp(Math.round(e.rest || 20), 10, 90),
-        tip: e.tip || null,
-        reps: repsOf(e.id, e.reps),
-      }));
-    if (items.length < 2) return null;
-    return buildStrengthSteps(items, clamp(Math.round(spec.rounds || 3), 1, 5));
-  }
-  if (spec.type === 'walk') return buildWalkSteps(clamp(Math.round(spec.minutes || 30), 10, 60));
-  if (spec.type === 'family') return buildFamilySteps(clamp(Math.round(spec.minutes || 45), 20, 90));
-  return buildLightSteps();
+  if (!spec || spec.type !== 'strength') return null;
+  const items = (spec.exercises || [])
+    .filter((e) => e && EXERCISES[e.id])
+    .map((e) => ({
+      id: e.id,
+      work: clamp(Math.round(e.work || 30), 15, 90),
+      rest: clamp(Math.round(e.rest || 30), 10, 90),
+      tip: e.tip || null,
+      reps: repsOf(e.id, e.reps),
+    }));
+  if (items.length < 2) return null;
+  return buildStrengthSteps(items, clamp(Math.round(spec.rounds || 3), 1, 5));
 }
 
 // Plan complet d'un jour. Si l'IA a un programme pour cette date, il est utilisé.
@@ -162,46 +114,40 @@ export function getDayPlan(dateISO, level, time, aiPlan) {
   const spec = aiPlan && aiPlan.days ? aiPlan.days[dateISO] : null;
   let steps = spec ? specToSteps(spec) : null;
   let meta;
-  let exIds = [];
+  let exIds;
 
   if (steps) {
-    const m = TYPE_META[spec.type] || TYPE_META.light;
     exIds = (spec.exercises || []).map((e) => e.id).filter((id) => EXERCISES[id]);
-    meta = { type: spec.type, icon: m.icon, emoji: m.emoji, title: spec.title || m.title, desc: spec.focus || '', ai: true };
+    meta = { icon: 'dumbbell', title: spec.title || BASE_TITLE, desc: spec.focus || '', ai: true };
   } else {
-    const info = DAY_INFO[weekday];
-    if (info.type === 'strength') {
-      exIds = resolveExercises(weekday, level);
-      const work = [30, 35, 40, 45][level];
-      const rest = [30, 25, 20, 20][level];
-      steps = buildStrengthSteps(
-        exIds.map((id) => ({ id, work, rest, reps: defaultReps(id, level) })),
-        level >= 2 ? 4 : 3
-      );
-    } else if (info.type === 'walk') {
-      steps = buildWalkSteps(Math.min(45, info.baseMin + 5 * level));
-    } else if (info.type === 'family') {
-      steps = buildFamilySteps(info.baseMin);
-    } else {
-      steps = buildLightSteps();
-    }
-    meta = { type: info.type, icon: info.icon, emoji: info.emoji, title: info.title, desc: info.desc, ai: false };
+    const { items, rounds, light } = defaultSession(level, weekday);
+    exIds = items.map((i) => i.id);
+    steps = buildStrengthSteps(items, rounds);
+    meta = {
+      icon: 'dumbbell',
+      title: BASE_TITLE,
+      desc: light
+        ? 'Soir plus léger : on garde le rythme sans fatiguer, c’est jour de pesée.'
+        : 'Poitrine, bras et gainage du ventre, à la maison, sans matériel.',
+      ai: false,
+    };
   }
 
   steps = attachNext(steps);
   const totalSeconds = steps.reduce((sum, s) => sum + s.seconds, 0);
 
-  // Exercices de la première série avec leurs répétitions, et nombre de séries
+  // Exercices de la première série (répétitions ou durée) et nombre de séries
   const exItems = steps
     .filter((s) => s.kind === 'work' && s.exId && s.round === 1)
-    .map((s) => ({ id: s.exId, reps: s.reps || null }));
+    .map((s) => ({ id: s.exId, reps: s.reps || null, seconds: s.seconds }));
   const firstWork = steps.find((s) => s.kind === 'work' && s.exId);
 
   return {
     date: dateISO,
     weekday,
+    type: 'strength',
     ...meta,
-    durationMin: Math.round(totalSeconds / 60),
+    durationMin: Math.max(1, Math.round(totalSeconds / 60)),
     exIds,
     exItems,
     sets: firstWork ? firstWork.rounds : null,
@@ -235,18 +181,17 @@ export function computeLevel(sessions, startDate, today) {
     reason = 'Vos dernières séances étaient faciles : intensité augmentée.';
   }
 
+  // Séances manquées sur les 7 derniers jours (une séance chaque soir)
   let missed = 0;
   for (let i = 1; i <= 7; i += 1) {
     const d = addDays(today, -i);
     if (d < startDate) continue;
-    if ([1, 3, 5].includes(weekdayOf(d))) {
-      const s = sessions && sessions[d];
-      if (!s || s.status !== 'done') missed += 1;
-    }
+    const s = sessions && sessions[d];
+    if (!s || s.status !== 'done') missed += 1;
   }
-  if (missed >= 2 && !reason) {
+  if (missed >= 4 && !reason) {
     level -= 1;
-    reason = 'Deux séances manquées cette semaine : on reprend en douceur.';
+    reason = 'Plusieurs soirs manqués cette semaine : on reprend en douceur.';
   }
 
   return { level: clamp(level, 0, 3), reason, weeks };
@@ -257,10 +202,9 @@ export const LEVEL_NAMES = ['Démarrage', 'Progression', 'Intermédiaire', 'Conf
 export const TIPS = [
   'Un verre d’eau avant chaque repas aide à manger un peu moins sans y penser.',
   'Dîner léger et au moins 2 h 30 avant le coucher : le sommeil et le ventre vous remercieront.',
-  'Une marche de 10 minutes après le déjeuner aide la digestion et limite les pics de sucre.',
   'Dormir 7 h 30 réduit la faim du lendemain. Le coucher à l’heure est un vrai « exercice ».',
-  'Boissons sucrées et jus : ce sont souvent les calories les plus faciles à supprimer.',
-  'Dans l’assiette : un quart de féculents, un quart de protéines, la moitié de légumes.',
+  'Boissons sucrées et jus industriels : ce sont souvent les calories les plus faciles à supprimer.',
+  'Dans l’assiette : un quart de riz, un quart de protéines, la moitié de légumes.',
   'Mangez lentement : le cerveau met environ 20 minutes à comprendre qu’on est rassasié.',
   'Protéines à chaque repas (œufs, poisson, poulet, haricots secs) : elles protègent vos muscles.',
   'Une fringale à 16 h ? Un grand verre d’eau ou un thé sans sucre, puis attendez 10 minutes.',
@@ -268,6 +212,6 @@ export const TIPS = [
   'Se lever toutes les heures quand on est assis au travail, même 1 minute, fait une vraie différence.',
   'Posez le téléphone 30 minutes avant de dormir : l’endormissement sera plus rapide.',
   'Mesurez le tour de taille au niveau du nombril : il baisse souvent avant le poids.',
-  'Préparez vos affaires de sport la veille : moins d’excuses à 18 h 30.',
-  'Un jour raté n’est pas un échec. Reprenez simplement à la séance suivante.',
+  'Dégagez un coin de sol dès la journée : moins d’excuses à 18 h 30.',
+  'Un soir raté n’est pas un échec. Reprenez simplement le lendemain.',
 ];

@@ -6,7 +6,6 @@ export const STORAGE_KEY = 'mizana:v1';
 export const DEFAULT_SETTINGS = {
   reminders: {
     water: true,
-    lunchWalk: true,
     workout: true,
     dinner: true,
     bedtime: true,
@@ -14,7 +13,6 @@ export const DEFAULT_SETTINGS = {
   },
   times: {
     wake: '06:00',
-    lunchWalk: '12:45',
     workout: '18:30',
     dinner: '19:30',
     bedtime: '22:30',

@@ -1,4 +1,4 @@
-// Génération du programme par l'API Anthropic, semaine par semaine.
+// Génération du programme du soir par l'API Anthropic, une semaine par appel (économe en tokens).
 import { EXERCISES } from '../data/exercises';
 import { LEVEL_NAMES } from '../data/program';
 import { JOURS, addDays, weekdayOf } from '../utils/dates';
@@ -6,16 +6,15 @@ import { bmi } from '../utils/calc';
 
 export const MODEL = 'claude-sonnet-5-5'; // modifiable
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const TYPES = ['strength', 'hiit', 'walk', 'family', 'light', 'rest'];
 
 const SYSTEM = `Tu es Mizana Coach, un coach sportif bienveillant et prudent.
-Tu crées des programmes à faire à la maison, sans matériel, adaptés à un débutant en perte de poids.
+Tu crées des séances du soir à faire à la maison, sans matériel, pour un débutant en perte de poids : uniquement des pompes et de la planche (et leurs variantes).
 Tu réponds UNIQUEMENT avec un objet JSON valide, sans texte autour et sans balises markdown.
 Tu ne donnes pas d'avis médical.`;
 
 const catalog = () =>
   Object.entries(EXERCISES)
-    .map(([id, e]) => `- ${id} : ${e.name} (${e.muscles}, difficulté ${e.lvl}/3${e.motion === 'hold' ? ', exercice tenu' : ''})`)
+    .map(([id, e]) => `- ${id} : ${e.name} (${e.muscles}, difficulté ${e.lvl}/3${e.motion === 'hold' ? ', exercice tenu' : ', à répétitions'})`)
     .join('\n');
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -25,29 +24,28 @@ const num = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback)
 function repsFor(id, v) {
   if (EXERCISES[id] && EXERCISES[id].motion === 'hold') return null;
   const n = Math.round(Number(v));
-  return Number.isFinite(n) && n > 0 ? Math.min(60, Math.max(3, n)) : null;
+  return Number.isFinite(n) && n > 0 ? Math.min(40, Math.max(3, n)) : null;
 }
 
 function cleanDay(d) {
   if (!d || typeof d !== 'object') return null;
-  const type = TYPES.includes(d.type) ? d.type : 'light';
-  const out = { type, title: str(d.title, 40), focus: str(d.focus, 160) };
-  if (type === 'strength' || type === 'hiit') {
-    out.rounds = Math.min(5, Math.max(1, Math.round(num(d.rounds, 3))));
-    out.exercises = (Array.isArray(d.exercises) ? d.exercises : [])
-      .filter((e) => e && EXERCISES[e.id])
-      .slice(0, 6)
-      .map((e) => ({
-        id: e.id,
-        work: Math.min(90, Math.max(15, Math.round(num(e.work, 40)))),
-        rest: Math.min(90, Math.max(10, Math.round(num(e.rest, 20)))),
-        reps: repsFor(e.id, e.reps),
-        tip: str(e.tip, 140),
-      }));
-    if (out.exercises.length < 3) return null;
-  } else {
-    out.minutes = Math.min(90, Math.max(10, Math.round(num(d.minutes, 30))));
-  }
+  const out = {
+    type: 'strength',
+    title: str(d.title, 40),
+    focus: str(d.focus, 160),
+    rounds: Math.min(5, Math.max(1, Math.round(num(d.rounds, 3)))),
+  };
+  out.exercises = (Array.isArray(d.exercises) ? d.exercises : [])
+    .filter((e) => e && EXERCISES[e.id])
+    .slice(0, 4)
+    .map((e) => ({
+      id: e.id,
+      work: Math.min(90, Math.max(15, Math.round(num(e.work, 30)))),
+      rest: Math.min(90, Math.max(10, Math.round(num(e.rest, 30)))),
+      reps: repsFor(e.id, e.reps),
+      tip: str(e.tip, 140),
+    }));
+  if (out.exercises.length < 2) return null;
   return out;
 }
 
@@ -61,21 +59,19 @@ export function parseJSON(text) {
 
 function buildContext({ profile, sessions, weighIns, today, level }) {
   const recent = Object.entries(sessions || {})
-    .filter(([d]) => d <= today && d >= addDays(today, -14))
+    .filter(([d]) => d <= today && d >= addDays(today, -10))
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([d, s]) => `${d} : ${s.status === 'done' ? 'faite' : 'non faite'}${s.feeling ? ` (ressenti ${s.feeling})` : ''}`);
-  const w = [...(weighIns || [])]
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
-    .slice(-4)
-    .map((e) => `${e.date} : ${e.weight} kg`);
-  const last = w.length ? [...weighIns].sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-1)[0].weight : profile.startWeight;
+  const sorted = [...(weighIns || [])].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const w = sorted.slice(-4).map((e) => `${e.date} : ${e.weight} kg`);
+  const last = sorted.length ? sorted[sorted.length - 1].weight : profile.startWeight;
   return [
     `Sexe : ${profile.sex || 'non précisé'}`,
     `Taille : ${profile.heightCm} cm, poids de départ : ${profile.startWeight} kg, poids actuel : ${last} kg, objectif : ${profile.goalWeight} kg, IMC actuel : ${bmi(last, profile.heightCm).toFixed(1)}`,
     `Niveau actuel de l’application : ${level + 1}/4 (${LEVEL_NAMES[level]})`,
     `Dernières pesées : ${w.join(' ; ') || 'aucune'}`,
-    `Séances des 14 derniers jours : ${recent.join(' ; ') || 'aucune'}`,
-    'Contexte : la personne a un enfant ; le samedi est idéal pour une sortie active en famille.',
+    `Séances des 10 derniers jours : ${recent.join(' ; ') || 'aucune'}`,
+    'Contexte : séance chaque soir à la maison, sans matériel, uniquement pompes et planche. Pas de marche.',
   ].join('\n');
 }
 
@@ -85,7 +81,7 @@ function buildPrompt({ context, weekStart, weekIndex, totalWeeks, prevSummary })
     return `${i} = ${JOURS[weekdayOf(date)]} ${date}`;
   }).join('\n');
 
-  return `Crée la semaine ${weekIndex + 1} sur ${totalWeeks} d’un programme de sport.
+  return `Crée la semaine ${weekIndex + 1} sur ${totalWeeks} d’un programme de séances du soir.
 
 PROFIL ET HISTORIQUE
 ${context}
@@ -97,21 +93,21 @@ CATALOGUE D’EXERCICES (utilise uniquement ces identifiants)
 ${catalog()}
 
 RÈGLES
-- 7 jours exactement (d de 0 à 6). Types possibles : "strength", "hiit", "walk", "family", "light", "rest".
-- Environ 3 à 4 séances strength/hiit, 2 marches (walk), 1 sortie famille (family), 1 jour léger ou repos (light).
-- Chaque jour doit être différent : varie les exercices et les groupes musculaires d’un jour à l’autre et d’une semaine à l’autre.
-- strength/hiit : 4 à 6 exercices, "rounds" = nombre de séries (2 à 4), "work" en secondes (20 à 60), "rest" en secondes (15 à 45).
-- "reps" = nombre de répétitions à viser par série, adapté au niveau et au débutant (ex. 5 pompes, 8 fentes, 12 squats). Pour les exercices tenus (planche, planche latérale, superman, chaise contre le mur) mets null. Le temps "work" doit laisser assez de temps pour faire ces répétitions.
-- walk/family/light : fournis "minutes".
-- Progression douce d’une semaine à l’autre ; si les retours sont "dur" ou si des séances sont manquées, allège. Si "facile", augmente un peu. Une semaine un peu plus légère toutes les 4 semaines.
+- 7 jours exactement (d de 0 à 6) : une séance chaque soir, uniquement des pompes et de la planche (et variantes du catalogue). Aucune marche, aucun cardio.
+- Chaque séance : 2 à 4 exercices, avec au moins une variante de pompes ET une variante de planche.
+- "rounds" = nombre de séries (2 à 4).
+- "reps" = répétitions par série pour les pompes (ex. 5, 8, 10), adaptées au niveau d’un débutant. Pour les planches, mets null.
+- "work" en secondes : pour une planche, durée de maintien (15 à 60) ; pour des pompes, temps laissé pour les répétitions (environ 3 secondes par répétition plus 15). "rest" : 20 à 45 secondes.
+- Varie les variantes d’un soir à l’autre. Un soir plus léger par semaine (le dimanche, jour de pesée).
+- Progression douce d’une semaine à l’autre. Si les retours sont "dur" ou si des séances sont manquées, allège. Si "facile", augmente un peu. Une semaine plus légère toutes les 4 semaines.
 - "tip" : conseil de technique court (moins de 100 caractères) en français.
 - Textes en français, simples, motivants.
 
 FORMAT JSON EXACT
-{"summary":"résumé de la semaine en une phrase","days":[{"d":0,"type":"strength","title":"Jambes et gainage","focus":"phrase courte","rounds":3,"exercises":[{"id":"squat","work":40,"rest":20,"reps":12,"tip":"..."},{"id":"plank","work":30,"rest":20,"reps":null,"tip":"..."}]},{"d":1,"type":"walk","title":"Marche rapide","focus":"...","minutes":30}]}`;
+{"summary":"résumé de la semaine en une phrase","days":[{"d":0,"title":"Poitrine et gainage","focus":"phrase courte","rounds":3,"exercises":[{"id":"pushup","work":35,"rest":30,"reps":7,"tip":"..."},{"id":"plank","work":30,"rest":30,"reps":null,"tip":"..."}]}]}`;
 }
 
-export async function callClaude(apiKey, prompt, signal, system = SYSTEM, maxTokens = 3500) {
+export async function callClaude(apiKey, prompt, signal, system = SYSTEM, maxTokens = 3000) {
   let res;
   try {
     res = await fetch(API_URL, {

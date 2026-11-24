@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Switch, Text, View } from 'react-native';
 import { colors } from '../theme';
 import {
-  Body, Button, Chip, Field, Icon, Muted, Notice, Row, Screen, Section, TimeStepper,
+  Body, Button, Chip, Field, HeroCard, Icon, Muted, Notice, Row, Screen, Section, TimeStepper,
 } from '../components/UI';
 import { useApp } from '../context/AppContext';
 import { MODEL } from '../services/ai';
@@ -11,8 +11,7 @@ import { SEXES, fmtKg, parseNum, weightForBMI } from '../utils/calc';
 
 const REMINDER_LABELS = [
   ['water', 'tint', 'Eau (5 rappels)'],
-  ['lunchWalk', 'walking', 'Marche après le déjeuner'],
-  ['workout', 'dumbbell', 'Séance du jour'],
+  ['workout', 'dumbbell', 'Séance du soir'],
   ['dinner', 'utensils', 'Dîner léger'],
   ['bedtime', 'moon', 'Coucher (2 rappels)'],
   ['weigh', 'balance-scale', 'Pesée du dimanche'],
@@ -54,7 +53,7 @@ export default function SettingsScreen() {
   };
 
   const confirmReset = () => {
-    Alert.alert('Tout effacer ?', 'Poids, séances, programme IA, boissons et réglages seront supprimés de ce téléphone. Cette action est définitive.', [
+    Alert.alert('Tout effacer ?', 'Poids, séances, programme IA et réglages seront supprimés de ce téléphone. Cette action est définitive.', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Tout effacer',
@@ -71,20 +70,20 @@ export default function SettingsScreen() {
     <View
       style={{
         flex: 1, alignItems: 'center',
-        borderLeftWidth: first ? 0 : 1, borderLeftColor: 'rgba(255,255,255,0.25)',
+        borderLeftWidth: first ? 0 : 1, borderLeftColor: 'rgba(255,255,255,0.22)',
       }}
     >
       <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }}>{value}</Text>
+      <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', fontStyle: 'italic', marginTop: 2 }}>{value}</Text>
     </View>
   );
 
   const hero = (
-    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 18, paddingVertical: 14 }}>
+    <HeroCard style={{ flexDirection: 'row', paddingVertical: 16 }}>
       {heroCell('Taille', `${fmtKg(profile.heightCm)} cm`, true)}
       {heroCell('Départ', `${fmtKg(profile.startWeight)} kg`)}
       {heroCell('Objectif', `${fmtKg(profile.goalWeight)} kg`)}
-    </View>
+    </HeroCard>
   );
 
   return (
@@ -105,7 +104,7 @@ export default function SettingsScreen() {
 
       <Section title="Intelligence artificielle" icon="robot" iconColor={colors.accent}>
         <Muted style={{ marginBottom: 10 }}>
-          Collez votre clé API Anthropic (console.anthropic.com). Elle sert au programme sportif et aux boissons. Modèle utilisé : {MODEL}.
+          Collez votre clé API Anthropic (console.anthropic.com). Elle sert à créer vos séances du soir. Modèle utilisé : {MODEL}.
         </Muted>
         <Field
           label="Clé API Anthropic"
@@ -133,7 +132,7 @@ export default function SettingsScreen() {
       <Section title="Rappels" icon="bell">
         {REMINDER_LABELS.map(([k, icon, label]) => (
           <Row key={k} style={{ justifyContent: 'space-between', paddingVertical: 8 }}>
-            <Icon name={icon} size={15} color={colors.primary} style={{ width: 28 }} />
+            <Icon name={icon} size={15} color={colors.primaryLight} style={{ width: 28 }} />
             <Body style={{ flex: 1 }}>{label}</Body>
             <Switch
               value={!!settings.reminders[k]}
@@ -149,8 +148,7 @@ export default function SettingsScreen() {
 
       <Section title="Mes heures" icon="stopwatch">
         <TimeStepper icon="sun" label="Réveil" value={settings.times.wake} onChange={(v) => updateSettings({ times: { wake: v } })} />
-        <TimeStepper icon="walking" label="Marche après déjeuner" value={settings.times.lunchWalk} onChange={(v) => updateSettings({ times: { lunchWalk: v } })} />
-        <TimeStepper icon="dumbbell" label="Séance du jour" value={settings.times.workout} onChange={(v) => updateSettings({ times: { workout: v } })} />
+        <TimeStepper icon="dumbbell" label="Séance du soir" value={settings.times.workout} onChange={(v) => updateSettings({ times: { workout: v } })} />
         <TimeStepper icon="utensils" label="Dîner" value={settings.times.dinner} onChange={(v) => updateSettings({ times: { dinner: v } })} />
         <TimeStepper icon="moon" label="Coucher" value={settings.times.bedtime} onChange={(v) => updateSettings({ times: { bedtime: v } })} />
         <TimeStepper icon="balance-scale" label="Pesée du dimanche" value={settings.times.weigh} onChange={(v) => updateSettings({ times: { weigh: v } })} />
@@ -164,7 +162,7 @@ export default function SettingsScreen() {
         <Button title="Tout effacer et recommencer" icon="trash" variant="danger" onPress={confirmReset} />
       </Section>
 
-      <Muted style={{ textAlign: 'center' }}>Mizana V2 · repères généraux, pas d’avis médical.</Muted>
+      <Muted style={{ textAlign: 'center' }}>Mizana V3 · repères généraux, pas d’avis médical.</Muted>
     </Screen>
   );
 }

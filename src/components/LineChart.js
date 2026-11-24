@@ -3,14 +3,14 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { colors } from '../theme';
 
-export default function LineChart({ data, goal, height = 180, color = colors.primary }) {
+export default function LineChart({ data, goal, height = 190, color = colors.primary }) {
   const [width, setWidth] = useState(0);
 
   if (!data || data.length === 0) return null;
 
   const padL = 38;
   const padR = 14;
-  const padT = 14;
+  const padT = 16;
   const padB = 26;
 
   const values = data.map((d) => d.value);
@@ -44,11 +44,20 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
   }
 
   const showAllLabels = data.length <= 6;
+  const gridLines = [0, 0.5, 1].map((t) => padT + innerH * t);
 
   return (
     <View style={{ height }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {width > 0 && (
         <>
+          {/* Repères horizontaux */}
+          {gridLines.map((top, i) => (
+            <View
+              key={`g${i}`}
+              style={{ position: 'absolute', left: padL, width: innerW, top, height: 1, backgroundColor: colors.border }}
+            />
+          ))}
+
           {/* Ligne d'objectif */}
           {goal !== undefined && goal !== null && (
             <>
@@ -58,19 +67,19 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
                   left: padL,
                   width: innerW,
                   top: y(goal),
-                  height: 1.5,
+                  height: 2,
                   backgroundColor: colors.accent,
-                  opacity: 0.7,
+                  opacity: 0.85,
                 }}
               />
               <Text
                 style={{
                   position: 'absolute',
                   right: padR,
-                  top: y(goal) - 16,
+                  top: y(goal) - 17,
                   fontSize: 11,
                   color: colors.accent,
-                  fontWeight: '700',
+                  fontWeight: '800',
                 }}
               >
                 Objectif {String(goal).replace('.', ',')}
@@ -78,7 +87,7 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
             </>
           )}
 
-          {/* Repères verticaux */}
+          {/* Valeurs de l'axe vertical */}
           <Text style={{ position: 'absolute', left: 0, top: padT - 7, width: padL - 6, textAlign: 'right', fontSize: 10, color: colors.muted }}>
             {Math.round(max)}
           </Text>
@@ -95,7 +104,7 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
                 left: s.left,
                 top: s.top,
                 width: s.width,
-                height: 3,
+                height: 4,
                 borderRadius: 2,
                 backgroundColor: color,
                 transform: [{ rotate: `${s.angle}rad` }],
@@ -109,13 +118,13 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
               <View
                 style={{
                   position: 'absolute',
-                  left: x(i) - 5,
-                  top: y(d.value) - 5,
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
+                  left: x(i) - 6,
+                  top: y(d.value) - 6,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
                   backgroundColor: '#FFFFFF',
-                  borderWidth: 2.5,
+                  borderWidth: 3,
                   borderColor: color,
                 }}
               />
@@ -126,9 +135,9 @@ export default function LineChart({ data, goal, height = 180, color = colors.pri
                     left: x(i) - 22,
                     width: 44,
                     textAlign: 'center',
-                    top: y(d.value) - 22,
-                    fontSize: 11,
-                    fontWeight: '700',
+                    top: y(d.value) - 24,
+                    fontSize: 12,
+                    fontWeight: '800',
                     color: colors.text,
                   }}
                 >

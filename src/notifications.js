@@ -1,7 +1,6 @@
-// Rappels locaux (eau, séance, dîner, coucher, pesée) avec expo-notifications.
+// Rappels locaux (eau, séance du soir, dîner, coucher, pesée) avec expo-notifications.
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { DAY_INFO } from './data/program';
 import { parseHHMM, shiftTime } from './utils/dates';
 
 const CHANNEL_ID = 'mizana-rappels';
@@ -47,29 +46,15 @@ export function buildReminders(settings) {
   const list = [];
 
   if (reminders.water) {
-    WATER_REMINDERS.forEach((w) =>
-      list.push({ title: '💧 Eau', body: w.body, time: w.time })
-    );
-  }
-
-  if (reminders.lunchWalk) {
-    list.push({
-      title: '🚶 Marche après le repas',
-      body: '10 minutes de marche tranquille aident la digestion.',
-      time: times.lunchWalk,
-    });
+    WATER_REMINDERS.forEach((w) => list.push({ title: '💧 Eau', body: w.body, time: w.time }));
   }
 
   if (reminders.workout) {
-    for (let wd = 0; wd <= 6; wd += 1) {
-      const info = DAY_INFO[wd];
-      list.push({
-        title: `${info.emoji} ${info.title}`,
-        body: 'C’est l’heure de votre séance du jour. Ouvrez Mizana pour la lancer.',
-        time: times.workout,
-        weekday: wd + 1, // Expo : 1 = dimanche ... 7 = samedi
-      });
-    }
+    list.push({
+      title: '💪 Pompes et planche',
+      body: 'C’est l’heure de votre séance du soir. Ouvrez Mizana pour la lancer.',
+      time: times.workout,
+    });
   }
 
   if (reminders.dinner) {
@@ -98,7 +83,7 @@ export function buildReminders(settings) {
       title: '⚖️ Pesée du dimanche',
       body: 'Pesez-vous à jeun, avant le petit-déjeuner, et notez le résultat dans Mizana.',
       time: times.weigh,
-      weekday: 1,
+      weekday: 1, // Expo : 1 = dimanche
     });
   }
 

@@ -1,21 +1,20 @@
 import React, { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 import {
-  Body, Button, Chip, Heading, Icon, Muted, Notice, Panel, Pill, ProgressBar, Row, Screen, Section, StatRow,
+  Body, Button, Chip, Heading, HeroCard, Icon, Muted, Notice, Panel, Pill, ProgressBar, Row, Screen, Section, StatRow,
 } from '../components/UI';
 import { Float } from '../components/Motion';
 import { useApp } from '../context/AppContext';
-import { FEELINGS, LEVEL_NAMES, TIPS, computeLevel, getDayPlan } from '../data/program';
+import { EXERCISES, FEELINGS, LEVEL_NAMES, TIPS, computeLevel, getDayPlan } from '../data/program';
 import { SEXES, computeStats, fmtKg } from '../utils/calc';
 import {
-  JOURS_COURTS, addDays, dayOfYear, daysBetween, formatDuration, formatLong, formatShort,
-  mondayOf, nextSunday, sleepMinutes, weekdayOf,
+  JOURS_COURTS, addDays, dayOfYear, daysBetween, formatLong, formatShort, mondayOf, nextSunday, weekdayOf,
 } from '../utils/dates';
 
 export default function HomeScreen({ today, nav }) {
   const { state, setSession, saveProfile } = useApp();
-  const { profile, weighIns, sessions, settings, aiPlan, aiDrinks } = state;
+  const { profile, weighIns, sessions, settings, aiPlan } = state;
 
   const { level, reason } = useMemo(
     () => computeLevel(sessions, profile.startDate, today),
@@ -29,7 +28,7 @@ export default function HomeScreen({ today, nav }) {
   const session = sessions[today];
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Salama, bonne matinée' : hour < 18 ? 'Salama, bon après-midi' : 'Salama, bonne soirée';
+  const greeting = hour < 12 ? 'Bonne matinée' : hour < 18 ? 'Bon après-midi' : 'Bonne soirée';
 
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, i) => {
@@ -43,10 +42,7 @@ export default function HomeScreen({ today, nav }) {
   const isSunday = weekdayOf(today) === 0;
 
   const tip = TIPS[dayOfYear(today) % TIPS.length];
-  const sleepMin = sleepMinutes(settings.times.bedtime, settings.times.wake);
   const markDone = (feeling) => setSession(today, { status: 'done', feeling });
-
-  const drink = aiDrinks && aiDrinks.drinks ? aiDrinks.drinks[today] : null;
 
   // Bandeau programme IA
   const planEnded = aiPlan && today > aiPlan.endDate;
@@ -54,9 +50,9 @@ export default function HomeScreen({ today, nav }) {
   if (!aiPlan) {
     aiBanner = (
       <Panel tone="accent">
-        <Heading icon="robot" iconColor={colors.accent}>Programme personnalisé IA</Heading>
+        <Heading icon="robot" iconColor={colors.accent}>Séances guidées par l’IA</Heading>
         <Muted style={{ marginBottom: 10 }}>
-          Générez des séances différentes chaque jour, sur 1 à 7 semaines, adaptées à vos retours.
+          Chaque soir, l’IA choisit vos pompes et votre planche, avec les répétitions et les séries, selon vos retours.
         </Muted>
         <Button title="Générer mon programme" icon="magic" variant="accent" small onPress={() => nav.setTab('program')} />
       </Panel>
@@ -72,36 +68,29 @@ export default function HomeScreen({ today, nav }) {
   }
   const planWeek = aiPlan && !planEnded ? Math.floor(daysBetween(aiPlan.startDate, today) / 7) + 1 : null;
 
-  // Séance du jour : dans l'en-tête bleu
+  // Séance du soir : dans l'en-tête
   const hero = (
-    <View style={{ backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 22, padding: 16 }}>
+    <HeroCard>
       <Row style={{ justifyContent: 'space-between' }}>
-        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '800', letterSpacing: 1.5 }}>
-          SÉANCE DU JOUR
-        </Text>
+        <Text style={styles.heroLabel}>Séance du soir</Text>
         <Pill light label={`${planWeek ? `Sem. ${planWeek}/${aiPlan.weeks} · ` : ''}Niveau ${level + 1} · ${LEVEL_NAMES[level]}`} />
       </Row>
 
       <Row style={{ marginTop: 14 }}>
         <Float>
-          <View
-            style={{
-              width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.18)',
-              alignItems: 'center', justifyContent: 'center', marginRight: 14,
-            }}
-          >
+          <View style={styles.heroIcon}>
             <Icon name={plan.icon} size={26} color="#FFFFFF" />
           </View>
         </Float>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '800' }}>{plan.title}</Text>
+          <Text style={styles.heroTitle}>{plan.title}</Text>
           <Row style={{ marginTop: 4 }}>
             <Icon name="stopwatch" size={12} color="rgba(255,255,255,0.85)" style={{ marginRight: 6 }} />
             <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14 }}>
               {plan.time} · {plan.durationMin} min
             </Text>
             {plan.ai ? (
-              <View style={{ backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 8 }}>
+              <View style={styles.aiBadge}>
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>IA</Text>
               </View>
             ) : null}
@@ -109,14 +98,17 @@ export default function HomeScreen({ today, nav }) {
         </View>
       </Row>
 
-      {plan.desc ? (
-        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 19, marginTop: 12 }}>{plan.desc}</Text>
-      ) : null}
-      {plan.exercises.length > 0 && (
-        <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginTop: 10 }}>
-          {plan.exercises.join(' · ')}
-        </Text>
-      )}
+      {plan.desc ? <Text style={styles.heroDesc}>{plan.desc}</Text> : null}
+
+      <View style={styles.exList}>
+        {plan.exItems.map(({ id, reps, seconds }, i) => (
+          <Row key={`${id}${i}`} style={[styles.exRow, i === plan.exItems.length - 1 && { borderBottomWidth: 0 }]}>
+            <Text style={styles.exName}>{EXERCISES[id].name}</Text>
+            <Text style={styles.exVal}>{reps ? `${reps} rép.` : `${seconds} s`}</Text>
+          </Row>
+        ))}
+        {plan.sets ? <Text style={styles.exSets}>{plan.sets} séries, avec repos entre chaque</Text> : null}
+      </View>
 
       <View style={{ marginTop: 16 }}>
         {session && session.status === 'done' ? (
@@ -128,7 +120,7 @@ export default function HomeScreen({ today, nav }) {
           <Button title="Commencer la séance" icon="play" variant="light" onPress={() => nav.startWorkout(plan)} />
         )}
       </View>
-    </View>
+    </HeroCard>
   );
 
   return (
@@ -219,7 +211,7 @@ export default function HomeScreen({ today, nav }) {
 
         {session && session.status === 'skipped' && (
           <>
-            <Notice tone="warn">Séance non faite aujourd’hui. Pas grave : on repart à la prochaine.</Notice>
+            <Notice tone="warn">Séance non faite aujourd’hui. Pas grave : on repart demain soir.</Notice>
             <Button title="Finalement, je la fais" icon="play" onPress={() => nav.startWorkout(plan)} />
             <Button title="Annuler" variant="ghost" small onPress={() => setSession(today, null)} style={{ marginTop: 8 }} />
           </>
@@ -227,25 +219,23 @@ export default function HomeScreen({ today, nav }) {
       </Section>
 
       {/* Semaine */}
-      <Section
-        title="Cette semaine"
-        icon="calendar-check"
-        right={<Muted>{doneThisWeek} séance(s) faite(s)</Muted>}
-      >
+      <Section title="Cette semaine" icon="calendar-check" right={<Muted>{doneThisWeek} sur 7</Muted>}>
         <Row style={{ justifyContent: 'space-between' }}>
           {week.map((d) => {
             const isToday = d.date === today;
             const status = d.session && d.session.status;
-            const bg = status === 'done' ? colors.primary : status === 'skipped' ? colors.accentSoft : colors.bg;
+            const bg = status === 'done' ? colors.primary : status === 'skipped' ? colors.accentSoft : colors.card;
             const fg = status === 'done' ? '#FFFFFF' : status === 'skipped' ? colors.accent : colors.muted;
             return (
               <View key={d.date} style={{ alignItems: 'center', flex: 1 }}>
-                <Muted style={{ marginBottom: 4, fontWeight: isToday ? '800' : '400' }}>{d.label}</Muted>
+                <Muted style={{ marginBottom: 4, fontWeight: isToday ? '800' : '400', color: isToday ? colors.text : colors.muted }}>
+                  {d.label}
+                </Muted>
                 <View
                   style={{
-                    width: 34, height: 34, borderRadius: 17, backgroundColor: bg,
+                    width: 36, height: 36, borderRadius: 18, backgroundColor: bg,
                     alignItems: 'center', justifyContent: 'center',
-                    borderWidth: isToday ? 2 : 0, borderColor: colors.accent,
+                    borderWidth: isToday ? 2 : 1, borderColor: isToday ? colors.accent : colors.border,
                   }}
                 >
                   {status === 'done' ? (
@@ -262,44 +252,6 @@ export default function HomeScreen({ today, nav }) {
         </Row>
       </Section>
 
-      {/* Boisson du jour */}
-      <Section title="Boisson du jour" icon="blender" iconColor={colors.accent}>
-        {drink ? (
-          <>
-            <Body style={{ fontWeight: '800', fontSize: 17 }}>{drink.name}</Body>
-            <Muted style={{ marginTop: 2 }}>
-              {drink.when}{drink.minutes ? ` · ${drink.minutes} min de préparation` : ''}
-            </Muted>
-            {drink.goal ? <Body style={{ marginTop: 8 }}>{drink.goal}</Body> : null}
-            <Button
-              title="Voir la recette"
-              icon="book-open"
-              variant="secondary"
-              small
-              onPress={() => nav.setTab('drinks')}
-              style={{ marginTop: 12 }}
-            />
-          </>
-        ) : (
-          <>
-            <Muted style={{ marginBottom: 10 }}>
-              Une boisson 100 % naturelle pour accompagner vos séances : à préparer en mixant ou à acheter.
-            </Muted>
-            <Button title="Générer ma boisson" icon="magic" variant="accent" small onPress={() => nav.setTab('drinks')} />
-          </>
-        )}
-      </Section>
-
-      {/* Sommeil */}
-      <Section title="Sommeil" icon="moon">
-        <Body>
-          Coucher visé : {settings.times.bedtime} · réveil {settings.times.wake} → {formatDuration(sleepMin)} de sommeil.
-        </Body>
-        <Muted style={{ marginTop: 4 }}>
-          Un rappel arrive 30 minutes avant. Le sommeil aide autant que le sport pour le ventre.
-        </Muted>
-      </Section>
-
       {/* Conseil */}
       <Section title="Conseil du jour" icon="lightbulb" iconColor={colors.accent}>
         <Body>{tip}</Body>
@@ -311,3 +263,21 @@ export default function HomeScreen({ today, nav }) {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  heroLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '800', fontStyle: 'italic' },
+  heroIcon: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: colors.accent,
+    alignItems: 'center', justifyContent: 'center', marginRight: 14,
+  },
+  heroTitle: { color: '#FFFFFF', fontSize: 25, fontWeight: '900', fontStyle: 'italic', letterSpacing: -0.5 },
+  heroDesc: { color: 'rgba(255,255,255,0.82)', fontSize: 13, lineHeight: 19, marginTop: 12 },
+  aiBadge: { backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 8 },
+  exList: {
+    marginTop: 14, backgroundColor: 'rgba(3,8,24,0.35)', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 6,
+  },
+  exRow: { justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  exName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', flex: 1 },
+  exVal: { color: '#FFFFFF', fontSize: 20, fontWeight: '900', fontStyle: 'italic' },
+  exSets: { color: 'rgba(255,255,255,0.78)', fontSize: 12, paddingBottom: 8, paddingTop: 2 },
+});

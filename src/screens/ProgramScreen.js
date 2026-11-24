@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme';
 import {
-  Body, Button, Chip, Icon, Muted, Notice, Pill, ProgressBar, Row, Screen, Section,
+  Body, Button, Chip, HeroCard, Icon, Muted, Notice, Pill, ProgressBar, Row, Screen, Section,
 } from '../components/UI';
 import ExerciseGuide from '../components/ExerciseGuide';
 import { useApp } from '../context/AppContext';
@@ -10,7 +10,7 @@ import { EXERCISES, LEVEL_NAMES, computeLevel, getDayPlan } from '../data/progra
 import { generatePlan } from '../services/ai';
 import { JOURS, addDays, daysBetween, formatShort, mondayOf, weekdayOf } from '../utils/dates';
 
-const DURATIONS = [1, 2, 3, 4, 7];
+const DURATIONS = [1, 2, 4];
 
 export default function ProgramScreen({ today, nav }) {
   const { state, setAiPlan } = useApp();
@@ -65,15 +65,15 @@ export default function ProgramScreen({ today, nav }) {
   const cancel = () => abortRef.current && abortRef.current.abort();
 
   const hero = (
-    <View>
+    <HeroCard>
       <Row style={{ flexWrap: 'wrap' }}>
         <Pill light icon="chart-line" label={`Niveau ${level + 1} · ${LEVEL_NAMES[level]}`} />
       </Row>
-      <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 19, marginTop: 10 }}>
+      <Text style={styles.heroText}>
         {reason ||
           'Le niveau s’ajuste selon vos retours : deux séances « trop dures » allègent le programme, deux « faciles » l’augmentent.'}
       </Text>
-    </View>
+    </HeroCard>
   );
 
   return (
@@ -88,7 +88,7 @@ export default function ProgramScreen({ today, nav }) {
             </Muted>
           ) : (
             <Muted style={{ marginBottom: 8 }}>
-              L’IA crée des séances différentes pour chaque jour, avec le nombre de répétitions et de séries, selon votre profil, votre poids et vos retours.
+              L’IA crée la séance de chaque soir (pompes et planche) avec les répétitions et les séries, selon votre profil, votre poids et vos retours. Un seul appel par semaine, donc très peu de jetons.
             </Muted>
           )}
           {planEnded ? <Notice tone="warn">Votre programme est terminé : générez-en un nouveau.</Notice> : null}
@@ -145,7 +145,7 @@ export default function ProgramScreen({ today, nav }) {
           <Row style={{ justifyContent: 'space-between', marginBottom: 10 }}>
             <Button icon="chevron-left" variant="secondary" small disabled={weekOffset <= -1} onPress={() => setWeekOffset(weekOffset - 1)} />
             <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Semaine du {formatShort(monday)}</Text>
+              <Text style={styles.weekTitle}>Semaine du {formatShort(monday)}</Text>
               <Muted>{weekOffset === 0 ? 'Cette semaine' : weekOffset > 0 ? `Dans ${weekOffset} sem.` : 'Semaine passée'}</Muted>
             </View>
             <Button icon="chevron-right" variant="secondary" small disabled={weekOffset >= maxOffset} onPress={() => setWeekOffset(weekOffset + 1)} />
@@ -155,7 +155,6 @@ export default function ProgramScreen({ today, nav }) {
             const isToday = p.date === today;
             const isOpen = open === p.date;
             const session = sessions[p.date];
-            const firstWork = p.steps.find((s) => s.kind === 'work');
             return (
               <View
                 key={p.date}
@@ -168,14 +167,13 @@ export default function ProgramScreen({ today, nav }) {
                 <TouchableOpacity activeOpacity={0.8} onPress={() => setOpen(isOpen ? null : p.date)}>
                   <Row>
                     <View style={styles.dayIcon}>
-                      <Icon name={p.icon} size={18} color={colors.primary} />
+                      <Icon name={p.icon} size={18} color={isToday ? '#FFFFFF' : colors.primaryLight} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Muted>
-                        {JOURS[weekdayOf(p.date)].toUpperCase()}
-                        {isToday ? ' · AUJOURD’HUI' : ''}
+                      <Muted style={isToday ? { color: colors.accent, fontWeight: '800' } : null}>
+                        {JOURS[weekdayOf(p.date)]}{isToday ? ' · aujourd’hui' : ''}
                       </Muted>
-                      <Body style={{ fontWeight: '700' }}>{p.title}</Body>
+                      <Body style={{ fontWeight: '800' }}>{p.title}</Body>
                       <Muted>
                         {p.time} · {p.durationMin} min{p.ai ? ' · IA' : ''}
                       </Muted>
@@ -193,43 +191,24 @@ export default function ProgramScreen({ today, nav }) {
                 {isOpen && (
                   <View style={{ marginTop: 12 }}>
                     {p.desc ? <Muted style={{ marginBottom: 8 }}>{p.desc}</Muted> : null}
-                    {p.exItems.length > 0 ? (
-                      <>
-                        <Body style={{ fontWeight: '700', marginBottom: 6 }}>Exercices (touchez pour le guide)</Body>
-                        {p.exItems.map(({ id, reps }, i) => (
-                          <TouchableOpacity
-                            key={`${id}${i}`}
-                            onPress={() => setGuide({ id, reps, sets: p.sets })}
-                            activeOpacity={0.7}
-                          >
-                            <Row style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: isToday ? '#FFFFFF' : colors.border }}>
-                              <Icon name={EXERCISES[id].icon} size={14} color={colors.accent} style={{ width: 26 }} />
-                              <Body style={{ flex: 1 }}>{EXERCISES[id].name}</Body>
-                              {reps ? (
-                                <Text style={{ color: colors.primaryDark, fontWeight: '800', marginRight: 10 }}>
-                                  {reps} rép.
-                                </Text>
-                              ) : null}
-                              <Icon name="question-circle" size={14} color={colors.muted} />
-                            </Row>
-                          </TouchableOpacity>
-                        ))}
-                        {firstWork ? (
-                          <Muted style={{ marginTop: 8 }}>
-                            {p.sets ? `${p.sets} séries · ` : ''}{firstWork.seconds} s d’effort · échauffement 3 min · étirements 3 min.
-                          </Muted>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        <Body style={{ fontWeight: '700', marginBottom: 4 }}>Étapes</Body>
-                        {p.steps.map((s, i) => (
-                          <Body key={`${s.name}${i}`}>
-                            • {s.name} : {Math.round(s.seconds / 60)} min
-                          </Body>
-                        ))}
-                      </>
-                    )}
+                    <Body style={{ fontWeight: '800', marginBottom: 6 }}>Exercices (touchez pour le guide)</Body>
+                    {p.exItems.map(({ id, reps, seconds }, i) => (
+                      <TouchableOpacity
+                        key={`${id}${i}`}
+                        onPress={() => setGuide({ id, reps, sets: p.sets })}
+                        activeOpacity={0.7}
+                      >
+                        <Row style={styles.exRow}>
+                          <Icon name={EXERCISES[id].icon} size={14} color={colors.accent} style={{ width: 26 }} />
+                          <Body style={{ flex: 1 }}>{EXERCISES[id].name}</Body>
+                          <Text style={styles.exVal}>{reps ? `${reps} rép.` : `${seconds} s`}</Text>
+                          <Icon name="question-circle" size={14} color={colors.muted} />
+                        </Row>
+                      </TouchableOpacity>
+                    ))}
+                    <Muted style={{ marginTop: 8 }}>
+                      {p.sets ? `${p.sets} séries · ` : ''}échauffement et étirements inclus.
+                    </Muted>
                     {isToday && !session ? (
                       <Button title="Commencer" icon="play" onPress={() => nav.startWorkout(p)} style={{ marginTop: 12 }} />
                     ) : null}
@@ -252,16 +231,23 @@ export default function ProgramScreen({ today, nav }) {
 }
 
 const styles = StyleSheet.create({
+  heroText: { color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 19, marginTop: 10 },
+  weekTitle: { fontSize: 17, fontWeight: '900', fontStyle: 'italic', color: colors.text },
   dayRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   dayToday: {
     backgroundColor: colors.primarySoft,
-    borderRadius: 16,
+    borderRadius: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
     paddingHorizontal: 12,
     marginHorizontal: -12,
     borderBottomWidth: 0,
   },
   dayIcon: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primarySoft,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
+  exRow: { paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colors.border },
+  exVal: { color: colors.text, fontWeight: '900', fontStyle: 'italic', fontSize: 16, marginRight: 10 },
 });

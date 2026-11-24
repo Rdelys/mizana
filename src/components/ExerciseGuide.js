@@ -5,7 +5,7 @@ import { EXERCISES } from '../data/exercises';
 import ExerciseVisual from './ExerciseVisual';
 import { Button, Icon, Muted, Notice } from './UI';
 
-// reps / sets : objectif du jour (facultatif, absent des anciens programmes IA)
+// reps / sets : objectif du jour (facultatif)
 export default function ExerciseGuide({ id, reps, sets, onClose }) {
   const ex = id ? EXERCISES[id] : null;
   const name = ex ? ex.name.toLowerCase() : '';
@@ -26,6 +26,7 @@ export default function ExerciseGuide({ id, reps, sets, onClose }) {
     <Modal visible={!!ex} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
+          <View style={styles.handle} />
           {ex ? (
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={{ alignItems: 'center', marginBottom: 8 }}>
@@ -37,7 +38,7 @@ export default function ExerciseGuide({ id, reps, sets, onClose }) {
               {goal ? (
                 <View style={styles.goalBox}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="bullseye" size={14} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Icon name="bullseye" size={14} color={colors.accent} style={{ marginRight: 8 }} />
                     <Text style={styles.goalTitle}>Objectif du jour : {goal}</Text>
                   </View>
                   <Text style={styles.goalText}>{example}</Text>
@@ -66,23 +67,30 @@ export default function ExerciseGuide({ id, reps, sets, onClose }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(10,31,92,0.55)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(3,8,24,0.72)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: 20,
     maxHeight: '88%',
   },
-  name: { fontSize: 24, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  handle: {
+    alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: 14,
+  },
+  name: { fontSize: 26, fontWeight: '900', fontStyle: 'italic', color: colors.text, textAlign: 'center', letterSpacing: -0.5 },
   goalBox: {
     backgroundColor: colors.primarySoft,
     borderRadius: radius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
     padding: 12,
     marginBottom: 14,
   },
-  goalTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: colors.primaryDark },
-  goalText: { fontSize: 14, lineHeight: 20, color: colors.text, marginTop: 6 },
+  goalTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: colors.text },
+  goalText: { fontSize: 14, lineHeight: 20, color: colors.primaryLight, marginTop: 6 },
   stepRow: { flexDirection: 'row', marginBottom: 10 },
   stepNum: {
     width: 28,

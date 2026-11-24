@@ -14,10 +14,10 @@ import ExerciseVisual from '../components/ExerciseVisual';
 import ExerciseGuide from '../components/ExerciseGuide';
 
 const KIND_STYLE = {
-  warmup: { label: 'ÉCHAUFFEMENT', grad: ['#3B82F6', '#1E4FD8'], color: '#1E4FD8', icon: 'fire' },
-  work: { label: 'EFFORT', grad: ['#F2455A', '#B80F28'], color: '#C4122B', icon: 'dumbbell' },
-  rest: { label: 'REPOS', grad: ['#2F6BFF', '#0F2F8F'], color: '#0F2F8F', icon: 'tint' },
-  cool: { label: 'RETOUR AU CALME', grad: ['#16358F', '#081945'], color: '#081945', icon: 'spa' },
+  warmup: { label: 'Échauffement', grad: ['#2F6BFF', '#14338F'], color: '#1E4FD8', icon: 'fire' },
+  work: { label: 'Effort', grad: ['#FF3B4E', '#7A0B1E'], color: '#C4122B', icon: 'dumbbell' },
+  rest: { label: 'Repos', grad: ['#1E4FD8', '#081A52'], color: '#0F2F8F', icon: 'tint' },
+  cool: { label: 'Retour au calme', grad: ['#14214F', '#030818'], color: '#14214F', icon: 'spa' },
 };
 
 export default function WorkoutScreen({ plan, onClose, onComplete }) {
@@ -58,6 +58,7 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
     let text = s.name;
     if (s.kind === 'rest') text = `Repos.${s.next ? ` Ensuite : ${s.next}` : ''}`;
     else if (s.kind === 'work' && s.reps) text = `${s.name}. ${s.reps} répétitions.`;
+    else if (s.kind === 'work') text = `${s.name}. Tenez ${s.seconds} secondes.`;
     try {
       Speech.stop();
       Speech.speak(text, { language: 'fr-FR' });
@@ -104,7 +105,7 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
   if (finished) {
     return (
       <LinearGradient
-        colors={[colors.primary, colors.navy]}
+        colors={[colors.primaryDark, colors.navy]}
         style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24, justifyContent: 'center' }]}
       >
         <StatusBar barStyle="light-content" />
@@ -137,15 +138,16 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
   const style = KIND_STYLE[step.kind] || KIND_STYLE.work;
   const elapsedBefore = steps.slice(0, idx).reduce((s, st) => s + st.seconds, 0);
   const overall = (elapsedBefore + (step.seconds - remaining)) / totalSeconds;
+  const stepPct = step.seconds > 0 ? (step.seconds - remaining) / step.seconds : 0;
   const guideTarget = step.exId || step.previewId || null;
   const guideReps = step.reps || step.previewReps || null;
   const guideSets = step.exId || step.previewId ? step.rounds || null : null;
 
   let counter = '';
   if (step.kind === 'work' && step.rounds > 1) {
-    counter = `Série ${step.round}/${step.rounds} · Exercice ${step.index}/${step.count}`;
+    counter = `Série ${step.round} sur ${step.rounds} · exercice ${step.index} sur ${step.count}`;
   } else if (step.kind === 'rest' && step.rounds) {
-    counter = `Série ${step.round}/${step.rounds}`;
+    counter = `Série ${step.round} sur ${step.rounds}`;
   }
 
   return (
@@ -181,7 +183,7 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
         <Text style={styles.kind}>{style.label}</Text>
 
         {step.exId ? (
-          <ExerciseVisual id={step.exId} size={150} tone="light" />
+          <ExerciseVisual id={step.exId} size={140} tone="light" />
         ) : step.kind === 'rest' && step.previewId ? (
           <View style={{ alignItems: 'center' }}>
             <ExerciseVisual id={step.previewId} size={96} tone="light" />
@@ -201,12 +203,21 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
 
         {step.kind === 'work' && step.reps ? (
           <View style={styles.repsBox}>
-            <Icon name="bullseye" size={13} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.repsText}>Objectif : {step.reps} répétitions</Text>
+            <Icon name="bullseye" size={14} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.repsText}>{step.reps} répétitions</Text>
+          </View>
+        ) : null}
+        {step.kind === 'work' && step.exId && !step.reps ? (
+          <View style={styles.repsBox}>
+            <Icon name="stopwatch" size={14} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.repsText}>Tenez la position</Text>
           </View>
         ) : null}
 
         <Text style={styles.timer}>{formatMMSS(remaining)}</Text>
+        <View style={styles.stepTrack}>
+          <View style={[styles.stepFill, { width: `${Math.min(100, stepPct * 100)}%` }]} />
+        </View>
         {counter ? <Text style={styles.counter}>{counter}</Text> : null}
         <Text style={styles.hint}>{step.hint}</Text>
         {step.tip ? (
@@ -225,8 +236,8 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
           <Text style={[styles.btnText, { color: style.color }]}>{paused ? 'Reprendre' : 'Pause'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={advance}>
-          <Text style={[styles.btnText, { color: '#FFFFFF' }]}>Passer</Text>
-          <Icon name="forward" size={15} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          <Text style={[styles.btnText, { color: '#FFFFFF' }]}>{step.kind === 'work' ? 'Fait' : 'Passer'}</Text>
+          <Icon name={step.kind === 'work' ? 'check' : 'forward'} size={15} color="#FFFFFF" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
 
@@ -243,27 +254,29 @@ export default function WorkoutScreen({ plan, onClose, onComplete }) {
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 20 },
   topRow: { flexDirection: 'row', alignItems: 'center' },
-  topText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '700' },
+  topText: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800', fontStyle: 'italic' },
   topBtn: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center', marginLeft: 8,
   },
-  progressTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)', marginTop: 12, overflow: 'hidden' },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)', marginTop: 12, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 3 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  kind: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '800', letterSpacing: 2, marginBottom: 10 },
+  kind: { color: 'rgba(255,255,255,0.9)', fontSize: 20, fontWeight: '900', fontStyle: 'italic', marginBottom: 10 },
   bigIcon: {
     width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
   preview: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '700', marginTop: 4 },
-  name: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 10 },
+  name: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', fontStyle: 'italic', textAlign: 'center', marginTop: 10, letterSpacing: -0.5 },
   repsBox: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginTop: 8,
+    borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7, marginTop: 8,
   },
-  repsText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-  timer: { color: '#FFFFFF', fontSize: 84, fontWeight: '800', marginVertical: 2, fontVariant: ['tabular-nums'] },
+  repsText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
+  timer: { color: '#FFFFFF', fontSize: 92, fontWeight: '900', fontStyle: 'italic', marginTop: 2, fontVariant: ['tabular-nums'] },
+  stepTrack: { width: '70%', height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden', marginBottom: 10 },
+  stepFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 3 },
   counter: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', marginBottom: 8 },
   hint: { color: 'rgba(255,255,255,0.92)', fontSize: 15, lineHeight: 22, textAlign: 'center', paddingHorizontal: 8 },
   tipBox: {
@@ -273,15 +286,15 @@ const styles = StyleSheet.create({
   tipText: { color: '#FFFFFF', fontSize: 13, flex: 1 },
   next: { color: 'rgba(255,255,255,0.85)', fontSize: 15, textAlign: 'center', marginBottom: 14 },
   buttons: { flexDirection: 'row' },
-  btn: { flex: 1, flexDirection: 'row', paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  btn: { flex: 1, flexDirection: 'row', paddingVertical: 17, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   btnMain: { backgroundColor: '#FFFFFF', marginRight: 10 },
   btnSecondary: { backgroundColor: 'rgba(255,255,255,0.22)' },
-  btnText: { fontSize: 17, fontWeight: '800' },
+  btnText: { fontSize: 18, fontWeight: '900' },
   trophy: {
     width: 110, height: 110, borderRadius: 55, backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  finishTitle: { fontSize: 30, fontWeight: '800', textAlign: 'center', marginTop: 20, color: '#FFFFFF' },
+  finishTitle: { fontSize: 32, fontWeight: '900', fontStyle: 'italic', textAlign: 'center', marginTop: 20, color: '#FFFFFF', letterSpacing: -0.6 },
   finishSub: { fontSize: 16, textAlign: 'center', marginTop: 8, marginBottom: 24, paddingHorizontal: 10, color: 'rgba(255,255,255,0.85)' },
   feelRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
 });
